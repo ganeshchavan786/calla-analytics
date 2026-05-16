@@ -51,7 +51,7 @@ export const POST = withAuth(async (req, ctx) => {
     });
 
     // Parse file based on source
-    let records;
+    let records: any[] = [];
     try {
       if (source === "CSV") {
         records = await ImportService.parseCSV(buffer);
