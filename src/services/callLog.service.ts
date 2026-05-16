@@ -403,7 +403,6 @@ export class CallLogService {
     if (tagIds.length > 0) {
       await prisma.callLogTag.createMany({
         data: tagIds.map((tagId) => ({ callLogId, tagId })),
-        skipDuplicates: true,
       });
     }
 
@@ -457,7 +456,6 @@ export class CallLogService {
             deviceName: r.deviceName ?? null,
             recordingLink: r.recordingLink ?? null,
           })),
-          skipDuplicates: false,
         });
         successCount += chunk.length;
       } catch {
