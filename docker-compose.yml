@@ -1,0 +1,46 @@
+# docker-compose.yml
+# Production PostgreSQL + App setup
+# Run: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: calllog_db
+    restart: always
+    environment:
+      POSTGRES_DB: calllog_db
+      POSTGRES_USER: calllog_user
+      POSTGRES_PASSWORD: CHANGE_THIS_PASSWORD
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calllog_user -d calllog_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js App
+  app:
+    build: .
+    container_name: calllog_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://calllog_user:CHANGE_THIS_PASSWORD@db:5432/calllog_db
+      NODE_ENV: production
+      JWT_SECRET: CHANGE_THIS_TO_LONG_RANDOM_STRING
+      NEXT_PUBLIC_APP_URL: https://your-domain.com
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:
