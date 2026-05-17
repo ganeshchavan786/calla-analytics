@@ -1,7 +1,7 @@
 "use client";
 // src/app/reports/page.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Download, BarChart2, Users, Phone, TrendingUp, Clock, Activity } from "lucide-react";
 
 const REPORT_TYPES = [
@@ -24,11 +24,25 @@ export default function ReportsPage() {
     return d.toISOString().split("T")[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [members, setMembers] = useState<any[]>([]);
   const [format, setFormat] = useState<"CSV" | "EXCEL" | "PDF">("CSV");
   const [generating, setGenerating] = useState(false);
   const [preview, setPreview] = useState<any[] | null>(null);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") || "" : "";
+
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/organizations/${orgId}/members`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setMembers(data.data);
+        }
+      })
+      .catch((err) => console.error("Failed to load members", err));
+  }, [orgId]);
 
   async function generateReport() {
     setGenerating(true);
@@ -40,6 +54,7 @@ export default function ReportsPage() {
         dateFrom,
         dateTo,
         format,
+        ...(selectedUser ? { userId: selectedUser } : {}),
       });
 
       const res = await fetch(`/api/v1/organizations/${orgId}/reports?${params}`);
@@ -145,6 +160,22 @@ export default function ReportsPage() {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Filter by Member (Optional)</label>
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+              >
+                <option value="">All Members</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.user.name} ({m.role.toLowerCase()})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="mt-4">
