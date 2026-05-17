@@ -18,6 +18,7 @@ interface CallLog {
   isImportant: boolean;
   tags: { tag: { id: string; name: string; color: string } }[];
   _count: { notes: number; tasks: number };
+  importedBy?: { id: string; name: string; email: string } | null;
 }
 
 const CALL_TYPE_ICONS = {
@@ -34,8 +35,23 @@ export default function CallLogsPage() {
   const [callType, setCallType] = useState("ALL");
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState("ALL");
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") || "" : "";
+
+  // Load members on mount
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/organizations/${orgId}/members`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setMembers(data.data);
+        }
+      })
+      .catch((err) => console.error("Failed to load members", err));
+  }, [orgId]);
 
   const fetchCalls = useCallback(async (reset = false) => {
     if (!orgId) return;
@@ -45,6 +61,7 @@ export default function CallLogsPage() {
       limit: "50",
       ...(search ? { search } : {}),
       ...(callType !== "ALL" ? { callType } : {}),
+      ...(selectedUser !== "ALL" ? { userId: selectedUser } : {}),
       ...(!reset && cursor ? { cursor } : {}),
     });
 
@@ -70,7 +87,7 @@ export default function CallLogsPage() {
   useEffect(() => {
     setCursor(null);
     fetchCalls(true);
-  }, [search, callType]);
+  }, [search, callType, selectedUser]);
 
   async function toggleImportant(callId: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -126,6 +143,22 @@ export default function CallLogsPage() {
             />
           </div>
 
+          {/* Employee Filter */}
+          <div className="relative max-w-xs">
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+            >
+              <option value="ALL">All Members</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.user.name} ({m.role.toLowerCase()})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Call type tabs */}
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             {FILTER_TABS.map((tab) => (
@@ -153,6 +186,7 @@ export default function CallLogsPage() {
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Synced By</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date & Time</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Duration</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">SIM</th>
@@ -165,7 +199,7 @@ export default function CallLogsPage() {
             {loading && calls.length === 0 ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 9 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-gray-100 rounded animate-pulse" />
                     </td>
@@ -174,7 +208,7 @@ export default function CallLogsPage() {
               ))
             ) : calls.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
                   <Phone size={32} className="mx-auto mb-3 opacity-30" />
                   <p>No call logs found</p>
                   <p className="text-xs mt-1">Import call logs or add manually</p>
@@ -210,6 +244,9 @@ export default function CallLogsPage() {
                         <Icon size={11} />
                         {call.callType}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 font-medium">
+                      {call.importedBy?.name || "System"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{formatDateTime(call.date)}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDuration(call.duration)}</td>
