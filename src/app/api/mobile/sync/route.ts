@@ -148,6 +148,9 @@ export async function POST(req: NextRequest) {
       batch.id,
       records.map((r) => ({
         ...r,
+        contactName: r.contactName || undefined,
+        deviceName: r.deviceName || undefined,
+        recordingLink: r.recordingLink || undefined,
         date: new Date(r.date),
         simSlot: r.simSlot ?? "UNKNOWN",
       }))
