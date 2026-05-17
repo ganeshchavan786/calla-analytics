@@ -32,6 +32,7 @@ const MAIN_PUBLIC = [
   "/auth/forgot-password",
   "/auth/reset-password",
   "/api/v1/auth/accept-invite",
+  "/api/mobile/verify",
 ];
 
 const LICENSE_PUBLIC = [
@@ -99,8 +100,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Require calllog_session cookie
-  const mainToken = req.cookies.get("calllog_session")?.value;
+  // Require calllog_session cookie OR Bearer token
+  let mainToken = req.cookies.get("calllog_session")?.value;
+  
+  if (!mainToken) {
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      mainToken = authHeader.substring(7);
+    }
+  }
 
   if (!mainToken) {
     if (pathname.startsWith("/api/")) {
