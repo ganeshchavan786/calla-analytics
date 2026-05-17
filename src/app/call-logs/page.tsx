@@ -37,6 +37,8 @@ export default function CallLogsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState("ALL");
+  const [simSlot, setSimSlot] = useState("ALL");
+  const [exporting, setExporting] = useState(false);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") || "" : "";
 
@@ -62,6 +64,7 @@ export default function CallLogsPage() {
       ...(search ? { search } : {}),
       ...(callType !== "ALL" ? { callType } : {}),
       ...(selectedUser !== "ALL" ? { userId: selectedUser } : {}),
+      ...(simSlot !== "ALL" ? { simSlot } : {}),
       ...(!reset && cursor ? { cursor } : {}),
     });
 
@@ -82,17 +85,61 @@ export default function CallLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, search, callType, cursor]);
+  }, [orgId, search, callType, selectedUser, simSlot, cursor]);
 
   useEffect(() => {
     setCursor(null);
     fetchCalls(true);
-  }, [search, callType, selectedUser]);
+  }, [search, callType, selectedUser, simSlot]);
 
   async function toggleImportant(callId: string, e: React.MouseEvent) {
     e.stopPropagation();
     await fetch(`/api/v1/organizations/${orgId}/call-logs/${callId}/important`, { method: "PATCH" });
     fetchCalls(true);
+  }
+
+  async function exportCSV() {
+    if (!orgId) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        limit: "5000",
+        ...(search ? { search } : {}),
+        ...(callType !== "ALL" ? { callType } : {}),
+        ...(selectedUser !== "ALL" ? { userId: selectedUser } : {}),
+        ...(simSlot !== "ALL" ? { simSlot } : {}),
+      });
+      const res = await fetch(`/api/v1/organizations/${orgId}/call-logs?${params}`);
+      const data = await res.json();
+      if (data.success && data.data.data.length > 0) {
+        const records = data.data.data;
+        const headers = ["Contact Name", "Mobile Number", "Call Type", "Date & Time", "Duration (sec)", "SIM Slot", "Device Name", "Synced By"].join(",");
+        const rows = records.map((call: any) => [
+          `"${call.contactName || ""}"`,
+          `"${call.mobileNumber}"`,
+          `"${call.callType}"`,
+          `"${new Date(call.date).toLocaleString("en-IN")}"`,
+          call.duration,
+          `"${call.simSlot}"`,
+          `"${call.deviceName || ""}"`,
+          `"${call.importedBy?.name || "System"}"`
+        ].join(",")).join("\n");
+        const csv = `${headers}\n${rows}`;
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `call_logs_export_${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+      } else {
+        alert("No call logs to export under current filters.");
+      }
+    } catch (err) {
+      console.error("Export failed", err);
+      alert("Failed to export call logs.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   const FILTER_TABS = [
@@ -111,6 +158,14 @@ export default function CallLogsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total.toLocaleString()} total records</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={exportCSV}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <Upload size={15} className="rotate-180" />
+            {exporting ? "Exporting..." : "Export CSV"}
+          </button>
           <Link
             href="/call-logs/import"
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
@@ -156,6 +211,20 @@ export default function CallLogsPage() {
                   {m.user.name} ({m.role.toLowerCase()})
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* SIM Filter */}
+          <div className="relative max-w-xs">
+            <select
+              value={simSlot}
+              onChange={(e) => setSimSlot(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+            >
+              <option value="ALL">All SIM Slots</option>
+              <option value="SIM_1">SIM 1</option>
+              <option value="SIM_2">SIM 2</option>
+              <option value="UNKNOWN">Unknown SIM</option>
             </select>
           </div>
 
