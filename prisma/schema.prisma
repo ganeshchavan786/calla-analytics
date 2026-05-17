@@ -57,6 +57,10 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
 
+  // Email Verification OTP
+  verificationOtp  String?
+  otpExpiry        DateTime?
+
   // Mobile App Code
   uniqueCode       String?   @unique  // OWN-4829 या EMP-7341
   codeType         String?            // "OWNER" | "EMPLOYEE"
@@ -389,3 +393,50 @@ model SavedReport {
 
   @@index([organizationId])
 }
+
+// =============================================================
+// LICENSE MANAGER MODELS (Isolated — existing models touch नाही)
+// =============================================================
+
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @default("Super Admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LicenseSettings {
+  id             String   @id @default(cuid())
+
+  // SMTP Config
+  smtpHost       String   @default("")
+  smtpPort       Int      @default(587)
+  smtpUser       String   @default("")
+  smtpPass       String   @default("")
+  smtpSecure     Boolean  @default(false)
+  fromEmail      String   @default("")
+  fromName       String   @default("CallLog SaaS")
+
+  // App Config
+  appName        String   @default("CallLog SaaS")
+  supportEmail   String   @default("")
+  appUrl         String   @default("")
+
+  // Cron Config
+  cronReportEmail    String   @default("")
+  cronReportTime     String   @default("09:00")
+  cronReportEnabled  Boolean  @default(true)
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// =============================================================
+// USER MODEL ADDITIONS — paste these fields inside User model
+// verificationOtp, otpExpiry fields ADD करा User model मध्ये
+// =============================================================
+// verificationOtp  String?
+// otpExpiry        DateTime?

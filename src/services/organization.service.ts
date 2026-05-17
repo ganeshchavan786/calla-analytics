@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { AuditService } from "./audit.service";
 import { generateUniqueCode } from "@/lib/code-generator";
+import { sendInvitationEmail } from "@/lib/license-smtp";
 import { randomUUID } from "crypto";
 
 export class OrganizationService {
@@ -205,6 +206,26 @@ export class OrganizationService {
       entityId: invite.id,
       metadata: { email, role },
     });
+
+    // Send invitation email (fire and forget — never block invite creation)
+    const inviter = await prisma.user.findUnique({
+      where: { id: inviterUserId },
+      select: { name: true },
+    });
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
+    sendInvitationEmail(
+      email,
+      inviter?.name || "Someone",
+      org?.name || "the organization",
+      role,
+      invite.token
+    ).catch((err: any) =>
+      console.error("[Invitation Email Failed]", err.message)
+    );
 
     return invite;
   }

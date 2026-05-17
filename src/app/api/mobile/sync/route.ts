@@ -150,9 +150,6 @@ export async function POST(req: NextRequest) {
         ...r,
         date: new Date(r.date),
         simSlot: r.simSlot ?? "UNKNOWN",
-        contactName: r.contactName ?? undefined,
-        deviceName: r.deviceName ?? undefined,
-        recordingLink: r.recordingLink ?? undefined,
       }))
     );
 
