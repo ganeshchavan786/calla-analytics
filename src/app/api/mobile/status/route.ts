@@ -4,6 +4,7 @@
 // PURPOSE: Mobile App → Sync status check करा
 // =====================================================
 
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { SimService } from "@/services/sim.service";

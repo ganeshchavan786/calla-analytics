@@ -1,5 +1,6 @@
 // src/app/api/v1/auth/me/route.ts — FINAL
 
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import prisma from "@/lib/prisma";

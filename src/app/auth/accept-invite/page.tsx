@@ -2,7 +2,7 @@
 // src/app/auth/accept-invite/page.tsx
 // URL: /auth/accept-invite?token=xxxxx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Phone, CheckCircle, XCircle, Building2, Eye, EyeOff } from "lucide-react";
 
@@ -14,7 +14,7 @@ interface InviteInfo {
   userExists: boolean;
 }
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -264,5 +264,13 @@ export default function AcceptInvitePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AcceptInviteContent />
+    </Suspense>
   );
 }
