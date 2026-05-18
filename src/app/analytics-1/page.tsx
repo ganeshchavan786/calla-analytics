@@ -87,6 +87,8 @@ export default function Analytics1Page() {
       ...(selectedEmployee !== "ALL" ? { userId: selectedEmployee } : {}),
       ...(selectedCallType !== "ALL" ? { callType: selectedCallType } : {}),
       ...(searchToNumber ? { search: searchToNumber } : {}),
+      ...(fromDate ? { dateFrom: `${fromDate}T00:00:00.000Z` } : {}),
+      ...(toDate ? { dateTo: `${toDate}T23:59:59.999Z` } : {}),
     });
 
     try {
@@ -117,7 +119,7 @@ export default function Analytics1Page() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, limit, selectedEmployee, selectedCallType, searchEmployee, searchToNumber, searchDate, searchCallType]);
+  }, [orgId, limit, selectedEmployee, selectedCallType, searchEmployee, searchToNumber, searchDate, searchCallType, fromDate, toDate]);
 
   useEffect(() => {
     fetchLogs();
