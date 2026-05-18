@@ -10,8 +10,6 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import { formatDuration } from "@/lib/utils";
-import { MyCodeCard } from "@/components/ui/MyCodeCard";
-import { SimStatusCard } from "@/components/ui/SimStatusCard";
 
 interface Stats {
   totalCalls: number;
@@ -62,38 +60,9 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState("7d");
   const [loading, setLoading] = useState(true);
 
-  // Code + SIM state
-  const [myCode, setMyCode] = useState<string | null>(null);
-  const [codeType, setCodeType] = useState<"OWNER" | "EMPLOYEE" | null>(null);
-  const [mySIMs, setMySIMs] = useState<SIM[]>([]);
-  const [orgSIMs, setOrgSIMs] = useState<OrgSIM[]>([]);
-
   const orgId = typeof window !== "undefined"
     ? localStorage.getItem("currentOrgId") || ""
     : "";
-
-  // Fetch current user info + SIMs
-  const fetchUserInfo = useCallback(async () => {
-    try {
-      const res = await fetch("/api/v1/auth/me");
-      const data = await res.json();
-      if (data.success) {
-        setMyCode(data.data.user.uniqueCode);
-        setCodeType(data.data.user.codeType);
-        setMySIMs(data.data.registeredSIMs || []);
-      }
-    } catch { /* silent */ }
-  }, []);
-
-  // Fetch all org SIMs (Owner/Admin only)
-  const fetchOrgSIMs = useCallback(async () => {
-    if (!orgId) return;
-    try {
-      const res = await fetch(`/api/v1/organizations/${orgId}/sims`);
-      const data = await res.json();
-      if (data.success) setOrgSIMs(data.data);
-    } catch { /* silent */ }
-  }, [orgId]);
 
   // Fetch analytics
   const fetchAnalytics = useCallback(async () => {
@@ -116,11 +85,6 @@ export default function DashboardPage() {
   }, [orgId, period]);
 
   useEffect(() => {
-    fetchUserInfo();
-    fetchOrgSIMs();
-  }, [fetchUserInfo, fetchOrgSIMs]);
-
-  useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
@@ -132,17 +96,6 @@ export default function DashboardPage() {
     { label: "Avg Duration", value: formatDuration(stats.avgDuration), icon: Clock, color: "bg-purple-500" },
     { label: "Missed Rate", value: `${stats.missedRate}%`, icon: TrendingUp, color: "bg-orange-500" },
   ] : [];
-
-  // Group orgSIMs by user
-  const employeeSIMMap = orgSIMs.reduce<Record<string, { user: OrgSIM["user"]; sims: OrgSIM[] }>>(
-    (acc, sim) => {
-      const uid = sim.user.id;
-      if (!acc[uid]) acc[uid] = { user: sim.user, sims: [] };
-      acc[uid].sims.push(sim);
-      return acc;
-    },
-    {}
-  );
 
   const maxHeat = Math.max(...heatmap.map((h) => h.count), 1);
 
@@ -171,71 +124,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-
-      {/* ── My Code + SIM Status ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {myCode && codeType && (
-          <MyCodeCard code={myCode} codeType={codeType} />
-        )}
-        <SimStatusCard sims={mySIMs} showRegisterButton />
-      </div>
-
-      {/* ── Owner: सर्व Employees + SIM Status ── */}
-      {codeType === "OWNER" && Object.keys(employeeSIMMap).length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Phone size={16} className="text-gray-500" />
-            Employees — SIM Sync Status
-          </h2>
-          <div className="space-y-3">
-            {Object.values(employeeSIMMap).map(({ user, sims }) => {
-              const isActive = sims.some((s) => s.isActive);
-              return (
-                <div key={user.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0">
-                    {user.name[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <p className="font-semibold text-gray-900">{user.name}</p>
-                      {user.uniqueCode && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-mono">
-                          {user.uniqueCode}
-                        </span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        isActive ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                      }`}>
-                        {isActive ? "✅ Active" : "⏳ Pending"}
-                      </span>
-                    </div>
-                    {sims.length === 0 ? (
-                      <p className="text-xs text-gray-400">No SIM registered — Ask to install mobile app</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {sims.map((sim) => (
-                          <div key={sim.simSlot} className="text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5">
-                            <span className="font-semibold text-gray-700">{sim.simSlot.replace("_", " ")}: </span>
-                            <span className="text-gray-600">{sim.phoneNumber}</span>
-                            <span className="text-gray-400 ml-1">
-                              · {sim.totalSynced.toLocaleString()} synced
-                            </span>
-                            {sim.lastSyncAt && (
-                              <span className="text-gray-300 ml-1">
-                                · {new Date(sim.lastSyncAt).toLocaleDateString("en-IN")}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ── KPI Cards ── */}
       {loading ? (
