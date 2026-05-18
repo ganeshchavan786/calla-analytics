@@ -442,7 +442,7 @@ export class CallLogService {
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const chunk = records.slice(i, i + BATCH_SIZE);
       try {
-        await prisma.callLog.createMany({
+        const result = await prisma.callLog.createMany({
           data: chunk.map((r) => ({
             organizationId,
             importedById: userId,
@@ -456,8 +456,10 @@ export class CallLogService {
             deviceName: r.deviceName ?? null,
             recordingLink: r.recordingLink ?? null,
           })),
+          skipDuplicates: true,
         });
-        successCount += chunk.length;
+        successCount += result.count;
+        failCount += (chunk.length - result.count);
       } catch {
         failCount += chunk.length;
       }
