@@ -131,6 +131,68 @@ export default function Analytics1Page() {
     return `${h}h ${m}m ${s}s`;
   };
 
+  const formatHMSOptional = (seconds: number): string => {
+    return seconds > 0 ? formatHMS(seconds) : "—";
+  };
+
+  // Aggregation for Unique Clients
+  const uniqueClientsData = (() => {
+    const groups: { [key: string]: CallLog[] } = {};
+    for (const call of calls) {
+      if (!groups[call.mobileNumber]) {
+        groups[call.mobileNumber] = [];
+      }
+      groups[call.mobileNumber].push(call);
+    }
+
+    return Object.entries(groups).map(([number, clientCalls]) => {
+      const contactName = clientCalls.find(c => c.contactName)?.contactName || "Unknown";
+      
+      const totalDuration = clientCalls.reduce((acc, c) => acc + c.duration, 0);
+      
+      const incomingCalls = clientCalls.filter(c => c.callType === "INCOMING");
+      const incomingDuration = incomingCalls.reduce((acc, c) => acc + c.duration, 0);
+      
+      const outgoingCalls = clientCalls.filter(c => c.callType === "OUTGOING");
+      const outgoingDuration = outgoingCalls.reduce((acc, c) => acc + c.duration, 0);
+      
+      const missedCalls = clientCalls.filter(c => c.callType === "MISSED").length;
+      const rejectedCalls = clientCalls.filter(c => c.callType === "REJECTED").length;
+      
+      const connectedCalls = clientCalls.filter(c => c.duration > 0).length;
+      
+      // Never Attended
+      const hasMissed = clientCalls.some(c => c.callType === "MISSED");
+      const hasConnection = clientCalls.some(c => c.duration > 0 && (c.callType === "INCOMING" || c.callType === "OUTGOING"));
+      const neverAttended = (hasMissed && !hasConnection) ? 1 : 0;
+      
+      // Not Pickup
+      const hasOutgoingUnanswered = clientCalls.some(c => c.callType === "OUTGOING" && c.duration === 0);
+      const hasAnyConnection = clientCalls.some(c => c.duration > 0);
+      const notPickup = (hasOutgoingUnanswered && !hasAnyConnection) ? 1 : 0;
+      
+      const sorted = [...clientCalls].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const lastCall = sorted[0];
+
+      return {
+        mobileNumber: number,
+        contactName,
+        totalCalls: clientCalls.length,
+        totalDuration,
+        incomingCalls: incomingCalls.length,
+        incomingDuration,
+        outgoingCalls: outgoingCalls.length,
+        outgoingDuration,
+        missedCalls,
+        rejectedCalls,
+        connectedCalls,
+        neverAttended,
+        notPickup,
+        lastCall
+      };
+    });
+  })();
+
   const togglePin = async (callId: string) => {
     if (!orgId) return;
     await fetch(`/api/v1/organizations/${orgId}/call-logs/${callId}/important`, { method: "PATCH" });
@@ -536,8 +598,139 @@ export default function Analytics1Page() {
         </div>
       )}
 
+      {/* ── Unique Clients Tab View ── */}
+      {activeTab === "UNIQUE_CLIENTS" && (
+        <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden animate-fadeIn">
+          
+          {/* Limit selector */}
+          <div className="flex items-center justify-end p-4 border-b border-gray-100 gap-2 bg-gray-50/50">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Show</span>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(parseInt(e.target.value))}
+              className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold focus:ring-amber-500 bg-white cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold border-b border-gray-100">
+                  <th className="py-4 px-3 font-bold text-center">Sr. No.</th>
+                  <th className="py-4 px-3 font-bold min-w-[150px]">Client</th>
+                  <th className="py-4 px-3 font-bold text-center">Total Calls</th>
+                  <th className="py-4 px-3 font-bold">Total Duration</th>
+                  <th className="py-4 px-3 font-bold text-center">Incoming Calls</th>
+                  <th className="py-4 px-3 font-bold">Incoming Duration</th>
+                  <th className="py-4 px-3 font-bold text-center">Outgoing Calls</th>
+                  <th className="py-4 px-3 font-bold">Outgoing Duration</th>
+                  <th className="py-4 px-3 font-bold text-center">Missed</th>
+                  <th className="py-4 px-3 font-bold text-center">Rejected</th>
+                  <th className="py-4 px-3 font-bold text-center">Connected Calls</th>
+                  <th className="py-4 px-3 font-bold text-center">Never Attended</th>
+                  <th className="py-4 px-3 font-bold text-center">Not Pickup by Client</th>
+                  <th className="py-4 px-3 font-bold min-w-[220px]">Last Call Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-gray-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan={14} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                      Loading unique clients analytics...
+                    </td>
+                  </tr>
+                ) : uniqueClientsData.length === 0 ? (
+                  <tr>
+                    <td colSpan={14} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                      No unique clients found under active filters.
+                    </td>
+                  </tr>
+                ) : (
+                  uniqueClientsData.map((client, index) => {
+                    const lastCall = client.lastCall;
+                    const isLastIncoming = lastCall?.callType === "INCOMING";
+                    const isLastOutgoing = lastCall?.callType === "OUTGOING";
+                    const isLastMissed = lastCall?.callType === "MISSED";
+                    const isLastRejected = lastCall?.callType === "REJECTED";
+
+                    return (
+                      <tr key={client.mobileNumber} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-4 px-3 font-bold text-gray-600 text-center">{index + 1}</td>
+                        <td className="py-4 px-3 font-medium">
+                          <p className="text-gray-900 font-semibold">{client.contactName}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{client.mobileNumber}</p>
+                        </td>
+                        <td className="py-4 px-3 font-bold text-gray-900 text-center">{client.totalCalls}</td>
+                        <td className="py-4 px-3 font-semibold text-gray-800">{formatHMSOptional(client.totalDuration)}</td>
+                        <td className="py-4 px-3 text-center">{client.incomingCalls}</td>
+                        <td className="py-4 px-3 font-semibold text-gray-800">{formatHMSOptional(client.incomingDuration)}</td>
+                        <td className="py-4 px-3 text-center">{client.outgoingCalls}</td>
+                        <td className="py-4 px-3 font-semibold text-gray-800">{formatHMSOptional(client.outgoingDuration)}</td>
+                        <td className="py-4 px-3 text-center">{client.missedCalls}</td>
+                        <td className="py-4 px-3 text-center">{client.rejectedCalls}</td>
+                        <td className="py-4 px-3 text-center font-bold text-gray-900">{client.connectedCalls}</td>
+                        <td className="py-4 px-3 text-center">
+                          <span className={client.neverAttended > 0 ? "px-2 py-0.5 rounded bg-red-50 text-red-700 font-bold" : ""}>
+                            {client.neverAttended}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 text-center">
+                          <span className={client.notPickup > 0 ? "px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold" : ""}>
+                            {client.notPickup}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3">
+                          {lastCall ? (
+                            <div className="space-y-1">
+                              <p className="text-gray-900 font-semibold leading-tight">
+                                {lastCall.importedBy?.name || "System"}{" "}
+                                <span className="text-[10px] font-normal text-gray-500 block md:inline">
+                                  ({lastCall.importedBy?.email.split("@")[0] || "9921640630"})
+                                </span>
+                              </p>
+                              <p className="text-[10px] text-gray-500 font-medium">
+                                {new Date(lastCall.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })},{" "}
+                                {new Date(lastCall.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              </p>
+                              {lastCall.duration > 0 && (
+                                <p className="text-[10px] text-gray-700 font-semibold">{formatHMS(lastCall.duration)}</p>
+                              )}
+                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold w-fit mt-1 border ${
+                                isLastIncoming
+                                  ? "bg-green-50 text-green-700 border-green-100"
+                                  : isLastOutgoing
+                                  ? "bg-blue-50 text-blue-700 border-blue-100"
+                                  : isLastMissed
+                                  ? "bg-red-50 text-red-700 border-red-100"
+                                  : "bg-gray-50 text-gray-700 border-gray-100"
+                              }`}>
+                                {isLastIncoming && <PhoneIncoming size={10} />}
+                                {isLastOutgoing && <PhoneOutgoing size={10} />}
+                                {isLastMissed && <PhoneMissed size={10} />}
+                                <span className="capitalize">{lastCall.callType.toLowerCase()}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── Placeholder for other tabs ── */}
-      {activeTab !== "CALL_HISTORY" && (
+      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && (
         <div className="bg-white rounded-xl border border-gray-150 p-12 text-center">
           <p className="text-gray-400 text-sm font-semibold">
             {TABS.find((t) => t.id === activeTab)?.label} report module is being configured.
