@@ -110,7 +110,7 @@ export const CallLogFiltersSchema = z.object({
     .default("date"),
   sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
   cursor: z.string().optional(),
-  limit: z.coerce.number().min(1).max(100).optional().default(50),
+  limit: z.coerce.number().min(1).max(5000).optional().default(50),
 });
 
 // =============================================================
