@@ -4,11 +4,28 @@
 import { useEffect, useState } from "react";
 import { Users, Mail, Plus, Trash2, Shield } from "lucide-react";
 
+interface SIM {
+  simSlot: string;
+  phoneNumber: string;
+  deviceName: string | null;
+  isActive: boolean;
+  lastSyncAt: string | null;
+  totalSynced: number;
+}
+
 interface Member {
   id: string;
   role: string;
   joinedAt: string;
-  user: { id: string; name: string; email: string; avatarUrl: string | null };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+    uniqueCode?: string | null;
+    codeType?: string | null;
+    registeredSIMs?: SIM[];
+  };
 }
 
 const ROLE_BADGES: Record<string, string> = {
@@ -208,8 +225,33 @@ export default function MembersPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900">{member.user.name}</p>
-                  <p className="text-sm text-gray-500 truncate">{member.user.email}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900">{member.user.name}</p>
+                    {member.user.uniqueCode && (
+                      <span className="text-[10px] bg-purple-50 text-purple-700 font-bold border border-purple-100 px-2 py-0.5 rounded-full font-mono">
+                        {member.user.uniqueCode}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{member.user.email}</p>
+                  
+                  {/* SIM Sync Status Badges */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {!member.user.registeredSIMs || member.user.registeredSIMs.length === 0 ? (
+                      <span className="text-[9px] bg-amber-50 text-amber-700 font-bold border border-amber-150 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        ⏳ SIM Sync Pending
+                      </span>
+                    ) : (
+                      member.user.registeredSIMs.map((sim) => (
+                        <span
+                          key={sim.simSlot}
+                          className="text-[9px] bg-green-50 text-green-700 font-bold border border-green-150 px-2 py-0.5 rounded-md flex items-center gap-1"
+                        >
+                          🟢 {sim.simSlot.replace("_", " ")}: {sim.phoneNumber} {sim.deviceName ? `(${sim.deviceName})` : ""}
+                        </span>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {/* Role */}

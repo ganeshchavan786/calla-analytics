@@ -108,6 +108,16 @@ export class OrganizationService {
           select: {
             id: true, name: true, email: true, avatarUrl: true,
             uniqueCode: true, codeType: true,
+            registeredSIMs: {
+              select: {
+                simSlot: true,
+                phoneNumber: true,
+                deviceName: true,
+                isActive: true,
+                lastSyncAt: true,
+                totalSynced: true,
+              }
+            }
           },
         },
       },
