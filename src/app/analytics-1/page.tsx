@@ -39,11 +39,7 @@ export default function Analytics1Page() {
   const [filtersOpen, setFiltersOpen] = useState(true);
   
   // Filter States (Top Bar)
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split("T")[0];
-  });
+  const [fromDate, setFromDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [toDate, setToDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [selectedEmployee, setSelectedEmployee] = useState("ALL");
   const [selectedCallType, setSelectedCallType] = useState("ALL");
@@ -334,7 +330,7 @@ export default function Analytics1Page() {
                 onClick={() => {
                   setSelectedEmployee("ALL");
                   setSelectedCallType("ALL");
-                  setFromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
+                  setFromDate(new Date().toISOString().split("T")[0]);
                   setToDate(new Date().toISOString().split("T")[0]);
                   fetchLogs();
                 }}
