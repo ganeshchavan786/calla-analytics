@@ -731,6 +731,118 @@ export default function Analytics1Page() {
         </div>
       )}
 
+      {/* ── Never Attended Tab View ── */}
+      {activeTab === "NEVER_ATTENDED" && (() => {
+        const neverAttendedClients = uniqueClientsData.filter(client => client.neverAttended > 0);
+        return (
+          <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden animate-fadeIn">
+            
+            {/* Limit selector */}
+            <div className="flex items-center justify-end p-4 border-b border-gray-100 gap-2 bg-gray-50/50">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Show</span>
+              <select
+                value={limit}
+                onChange={(e) => setLimit(parseInt(e.target.value))}
+                className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold focus:ring-amber-500 bg-white cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold border-b border-gray-100">
+                    <th className="py-4 px-4 font-bold text-center">Sr. No.</th>
+                    <th className="py-4 px-4 font-bold min-w-[180px]">Client</th>
+                    <th className="py-4 px-4 font-bold text-center">Total Attempts</th>
+                    <th className="py-4 px-4 font-bold min-w-[200px]">Last Attempt Date & Time</th>
+                    <th className="py-4 px-4 font-bold min-w-[180px]">Last Tried By</th>
+                    <th className="py-4 px-4 font-bold text-center">SIM Slot</th>
+                    <th className="py-4 px-4 font-bold">Device Name</th>
+                    <th className="py-4 px-4 font-bold text-center">Status</th>
+                    <th className="py-4 px-4 font-bold min-w-[150px]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-700">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                        Loading unanswered incoming calls...
+                      </td>
+                    </tr>
+                  ) : neverAttendedClients.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                        No clients found under "Never Attended" for active period.
+                      </td>
+                    </tr>
+                  ) : (
+                    neverAttendedClients.map((client, index) => {
+                      const lastCall = client.lastCall;
+                      return (
+                        <tr key={client.mobileNumber} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-4 px-4 font-bold text-gray-600 text-center">{index + 1}</td>
+                          <td className="py-4 px-4 font-medium">
+                            <p className="text-gray-900 font-semibold">{client.contactName}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{client.mobileNumber}</p>
+                          </td>
+                          <td className="py-4 px-4 font-bold text-gray-950 text-center">{client.totalCalls} Dials</td>
+                          <td className="py-4 px-4 font-semibold text-gray-800">
+                            {lastCall ? (
+                              <span>
+                                {new Date(lastCall.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })},{" "}
+                                {new Date(lastCall.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              </span>
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 font-medium">
+                            {lastCall ? (
+                              <div>
+                                <p className="text-gray-900 font-semibold">{lastCall.importedBy?.name || "System"}</p>
+                                <p className="text-[10px] text-gray-500">({lastCall.importedBy?.email.split("@")[0] || "9921640630"})</p>
+                              </div>
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-center font-semibold text-gray-700">
+                            {lastCall?.simSlot ? `SIM ${lastCall.simSlot}` : "—"}
+                          </td>
+                          <td className="py-4 px-4 font-semibold text-gray-700">
+                            {lastCall?.deviceName || "—"}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-red-50 text-red-700 font-bold border border-red-100 text-[10px]">
+                              Never Attended
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            {lastCall?.notes && lastCall.notes.length > 0 ? (
+                              <p className="text-xs text-gray-600 font-medium">{lastCall.notes[0].content}</p>
+                            ) : (
+                              <button className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors">
+                                <Plus size={11} />
+                                <span>Add Note</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Not Pickup by Client Tab View ── */}
       {activeTab === "NOT_PICKUP" && (() => {
         const notPickupClients = uniqueClientsData.filter(client => client.notPickup > 0);
@@ -844,7 +956,7 @@ export default function Analytics1Page() {
       })()}
 
       {/* ── Placeholder for other tabs ── */}
-      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && activeTab !== "NOT_PICKUP" && (
+      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && activeTab !== "NOT_PICKUP" && activeTab !== "NEVER_ATTENDED" && (
         <div className="bg-white rounded-xl border border-gray-150 p-12 text-center">
           <p className="text-gray-400 text-sm font-semibold">
             {TABS.find((t) => t.id === activeTab)?.label} report module is being configured.
