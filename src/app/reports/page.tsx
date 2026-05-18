@@ -1,70 +1,37 @@
 "use client";
-// src/app/reports/page.tsx
+// src/app/reports/page.tsx — RESTORED ORIGINAL
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  Calendar, Users, BarChart2, Clock, Activity, FileText, Download,
-  Search, ChevronDown, Check, X, Pin, Plus, AlertCircle, ChevronUp, Sliders,
-  PhoneIncoming, PhoneOutgoing, PhoneMissed
-} from "lucide-react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import { FileText, Download, BarChart2, Users, Phone, TrendingUp, Clock, Activity } from "lucide-react";
 
-interface CallLog {
-  id: string;
-  mobileNumber: string;
-  contactName: string | null;
-  callType: string;
-  date: string;
-  duration: number;
-  simSlot: string;
-  deviceName: string | null;
-  isImportant: boolean;
-  notes: { id: string; content: string }[];
-  importedBy?: { id: string; name: string; email: string } | null;
-}
-
-const TABS = [
-  { id: "SUMMARY", label: "Summary", icon: FileText },
-  { id: "ANALYSIS", label: "Analysis", icon: BarChart2 },
-  { id: "DAY_WISE", label: "Day-wise Analysis", icon: Calendar },
-  { id: "HOURLY", label: "Hourly Analysis", icon: Clock },
-  { id: "NEVER_ATTENDED", label: "Never Attended", icon: AlertCircle },
-  { id: "NOT_PICKUP", label: "Not Pickup by Client", icon: Clock },
-  { id: "UNIQUE_CLIENTS", label: "Unique Clients", icon: Users },
-  { id: "CALL_HISTORY", label: "Call History", icon: FileText },
+const REPORT_TYPES = [
+  { value: "DAILY", label: "Daily Call Report", icon: Phone, desc: "All calls for a specific date, grouped by type" },
+  { value: "EMPLOYEE", label: "Employee Call Report", icon: Users, desc: "Per-member call volume and duration breakdown" },
+  { value: "MISSED", label: "Missed Call Report", icon: Phone, desc: "All missed calls with response tracking" },
+  { value: "NUMBER_WISE", label: "Number-wise Report", icon: BarChart2, desc: "Activity grouped by unique phone number" },
+  { value: "DURATION", label: "Duration Report", icon: Clock, desc: "Long, average, and short call analysis" },
+  { value: "PRODUCTIVITY", label: "Productivity Report", icon: TrendingUp, desc: "Calls per hour and per day per user" },
+  { value: "TREND", label: "Call Trend Analysis", icon: Activity, desc: "Week-over-week and month-over-month trends" },
+  { value: "TEAM", label: "Team Activity Report", icon: Users, desc: "Cross-member call volume comparison" },
+  { value: "PEAK_HOUR", label: "Peak Hour Analysis", icon: Clock, desc: "Busiest calling windows by day of week" },
 ];
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState("CALL_HISTORY");
-  const [filtersOpen, setFiltersOpen] = useState(true);
-  
-  // Filter States (Top Bar)
-  const [fromDate, setFromDate] = useState(() => {
+  const [selectedType, setSelectedType] = useState("DAILY");
+  const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 30);
     return d.toISOString().split("T")[0];
   });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [selectedEmployee, setSelectedEmployee] = useState("ALL");
-  const [selectedCallType, setSelectedCallType] = useState("ALL");
-  const [excludeNumbers, setExcludeNumbers] = useState(true);
-
-  // Table Data States
-  const [calls, setCalls] = useState<CallLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(50);
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [selectedUser, setSelectedUser] = useState("");
   const [members, setMembers] = useState<any[]>([]);
-
-  // Column Header Search/Filter States
-  const [searchEmployee, setSearchEmployee] = useState("");
-  const [searchToNumber, setSearchToNumber] = useState("");
-  const [searchDate, setSearchDate] = useState("");
-  const [searchCallType, setSearchCallType] = useState("ALL");
-  const [searchNotes, setSearchNotes] = useState("");
+  const [format, setFormat] = useState<"CSV" | "EXCEL" | "PDF">("CSV");
+  const [generating, setGenerating] = useState(false);
+  const [preview, setPreview] = useState<any[] | null>(null);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") || "" : "";
 
-  // Load organization members
   useEffect(() => {
     if (!orgId) return;
     fetch(`/api/v1/organizations/${orgId}/members`)
@@ -77,474 +44,235 @@ export default function ReportsPage() {
       .catch((err) => console.error("Failed to load members", err));
   }, [orgId]);
 
-  // Fetch filtered call logs
-  const fetchLogs = useCallback(async () => {
-    if (!orgId) return;
-    setLoading(true);
-    
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      ...(selectedEmployee !== "ALL" ? { userId: selectedEmployee } : {}),
-      ...(selectedCallType !== "ALL" ? { callType: selectedCallType } : {}),
-      ...(searchToNumber ? { search: searchToNumber } : {}),
-    });
+  async function generateReport() {
+    setGenerating(true);
+    setPreview(null);
 
     try {
-      const res = await fetch(`/api/v1/organizations/${orgId}/call-logs?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        let list: CallLog[] = data.data.data;
+      const params = new URLSearchParams({
+        type: selectedType,
+        dateFrom,
+        dateTo,
+        format,
+        ...(selectedUser ? { userId: selectedUser } : {}),
+      });
 
-        // Apply local filtering to exactly match column-specific headers
-        if (searchEmployee) {
-          list = list.filter(c => 
-            (c.importedBy?.name || "System").toLowerCase().includes(searchEmployee.toLowerCase())
-          );
-        }
-        if (searchDate) {
-          list = list.filter(c => 
-            new Date(c.date).toLocaleDateString("en-IN").includes(searchDate)
-          );
-        }
-        if (searchCallType !== "ALL") {
-          list = list.filter(c => c.callType === searchCallType);
-        }
+      const res = await fetch(`/api/v1/organizations/${orgId}/reports?${params}`);
 
-        setCalls(list);
+      if (format === "CSV" || format === "EXCEL") {
+        const data = await res.json();
+        if (data.success) {
+          setPreview(data.data);
+        }
+      } else {
+        // PDF download
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `report_${selectedType}_${dateFrom}_${dateTo}.pdf`;
+        a.click();
       }
-    } catch (e) {
-      console.error(e);
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
-  }, [orgId, limit, selectedEmployee, selectedCallType, searchEmployee, searchToNumber, searchDate, searchCallType]);
+  }
 
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  // Format Duration into Xh Ym Zs
-  const formatHMS = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h}h ${m}m ${s}s`;
-  };
-
-  const togglePin = async (callId: string) => {
-    if (!orgId) return;
-    await fetch(`/api/v1/organizations/${orgId}/call-logs/${callId}/important`, { method: "PATCH" });
-    fetchLogs();
-  };
+  function downloadCSV() {
+    if (!preview) return;
+    const headers = Object.keys(preview[0] || {}).join(",");
+    const rows = preview.map((row) => Object.values(row).join(",")).join("\n");
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `report_${selectedType}_${dateFrom}_${dateTo}.csv`;
+    a.click();
+  }
 
   return (
     <div className="space-y-6">
-      
-      {/* ── Page Header ── */}
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Periodic Reports</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Export Dropdown */}
-          <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase">
-            <Download size={13} />
-            <span>Export</span>
-            <ChevronDown size={12} />
-          </button>
-          {/* Collapse/Expand Filters */}
-          <button
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-amber-300 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors uppercase"
-          >
-            <span>Filters</span>
-            {filtersOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Generate and export call log reports</p>
       </div>
 
-      {/* ── Filters Section ── */}
-      {filtersOpen && (
-        <div className="bg-white rounded-xl border border-gray-150 p-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            
-            {/* From Date */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">From Date</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Report Builder */}
+        <div className="space-y-5">
+          {/* Report Type */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <h2 className="font-semibold text-gray-900 mb-4">Report Type</h2>
+            <div className="space-y-2">
+              {REPORT_TYPES.map((report) => {
+                const Icon = report.icon;
+                return (
+                  <button
+                    key={report.value}
+                    onClick={() => setSelectedType(report.value)}
+                    className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                      selectedType === report.value
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-transparent hover:border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      selectedType === report.value ? "bg-blue-100" : "bg-gray-100"
+                    }`}>
+                      <Icon size={14} className={selectedType === report.value ? "text-blue-600" : "text-gray-500"} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${selectedType === report.value ? "text-blue-900" : "text-gray-900"}`}>
+                        {report.label}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{report.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Config + Preview */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Config Panel */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <h2 className="font-semibold text-gray-900 mb-4">Report Configuration</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">From Date</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">To Date</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
-            {/* To Date */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">To Date</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50"
-              />
-            </div>
-
-            {/* Select Employee Tags */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Employee Tags</label>
-              <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer">
-                <option value="ALL">Select</option>
-              </select>
-            </div>
-
-            {/* Select Employees */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Employees</label>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Filter by Member (Optional)</label>
               <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer"
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
               >
-                <option value="ALL">Select</option>
+                <option value="">All Members</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>
-                    {m.user.name}
+                    {m.user.name} ({m.role.toLowerCase()})
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Select Call Type */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Call Type</label>
-              <select
-                value={selectedCallType}
-                onChange={(e) => setSelectedCallType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer"
-              >
-                <option value="ALL">Select</option>
-                <option value="INCOMING">Incoming</option>
-                <option value="OUTGOING">Outgoing</option>
-                <option value="MISSED">Missed</option>
-              </select>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+              <div className="flex gap-3">
+                {(["CSV", "EXCEL", "PDF"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFormat(f)}
+                    className={`flex-1 py-2.5 text-sm font-medium rounded-xl border-2 transition-all ${
+                      format === f
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {f === "CSV" ? "📄 CSV" : f === "EXCEL" ? "📊 Excel" : "📋 PDF"}
+                  </button>
+                ))}
+              </div>
             </div>
 
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-1 items-end">
-            
-            {/* Select Call Method */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Call Method</label>
-              <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer">
-                <option value="ALL">Select</option>
-              </select>
-            </div>
-
-            {/* Select Duration */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Duration</label>
-              <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer">
-                <option value="ALL">Select</option>
-              </select>
-            </div>
-
-            {/* Select Call Time */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Select Call Time</label>
-              <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-50 cursor-pointer">
-                <option value="ALL">Select</option>
-              </select>
-            </div>
-
-            {/* Filter Buttons */}
-            <div className="col-span-2 flex gap-3">
-              <button
-                onClick={fetchLogs}
-                className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors shadow-sm"
-              >
-                Apply
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedEmployee("ALL");
-                  setSelectedCallType("ALL");
-                  setFromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
-                  setToDate(new Date().toISOString().split("T")[0]);
-                  fetchLogs();
-                }}
-                className="flex-1 py-2 border border-amber-500 text-amber-600 rounded-lg text-sm font-bold hover:bg-amber-50 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
-
-          </div>
-
-          {/* Exclude Checkbox */}
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="exclude"
-              checked={excludeNumbers}
-              onChange={(e) => setExcludeNumbers(e.target.checked)}
-              className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500 accent-amber-500"
-            />
-            <label htmlFor="exclude" className="text-xs font-bold text-gray-600">
-              Exclude Numbers Mentioned in <span className="text-amber-600 cursor-pointer hover:underline">Exclude Phone Numbers</span>
-            </label>
-          </div>
-
-        </div>
-      )}
-
-      {/* ── Active Date Badge ── */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg border border-amber-100 w-fit text-sm font-bold shadow-sm">
-        <Calendar size={15} />
-        <span>
-          {new Date(fromDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} to {new Date(toDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-        </span>
-      </div>
-
-      {/* ── Navigation Tabs ── */}
-      <div className="border-b border-gray-200 overflow-x-auto">
-        <div className="flex gap-6 min-w-max pb-0.5">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-1 text-sm font-bold flex items-center gap-2 transition-all border-b-2 outline-none ${
-                  isActive
-                    ? "border-amber-500 text-amber-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
-                }`}
-              >
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Call History Tab View ── */}
-      {activeTab === "CALL_HISTORY" && (
-        <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
-          
-          {/* Limit selector */}
-          <div className="flex items-center justify-end p-4 border-b border-gray-100 gap-2 bg-gray-50/50">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Show</span>
-            <select
-              value={limit}
-              onChange={(e) => setLimit(parseInt(e.target.value))}
-              className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold focus:ring-amber-500 bg-white cursor-pointer"
+            <button
+              onClick={generateReport}
+              disabled={generating}
+              className="w-full mt-5 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+              {generating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText size={16} />
+                  Generate Report
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Call History Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-100">
-                  <th className="py-4 px-4 font-bold min-w-[60px]">Sr. No.</th>
-                  
-                  {/* Employee with Search Box */}
-                  <th className="py-4 px-4 font-bold min-w-[200px]">
-                    <span className="block mb-2">Employee</span>
-                    <div className="relative">
-                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search"
-                        value={searchEmployee}
-                        onChange={(e) => setSearchEmployee(e.target.value)}
-                        className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none lowercase normal-case bg-white"
-                      />
-                    </div>
-                  </th>
+          {/* Preview */}
+          {preview && preview.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Report Preview</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{preview.length} rows</p>
+                </div>
+                <button
+                  onClick={downloadCSV}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                >
+                  <Download size={14} />
+                  Download CSV
+                </button>
+              </div>
 
-                  {/* To Number with Search Box */}
-                  <th className="py-4 px-4 font-bold min-w-[220px]">
-                    <span className="block mb-2">To Number</span>
-                    <div className="relative">
-                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search"
-                        value={searchToNumber}
-                        onChange={(e) => setSearchToNumber(e.target.value)}
-                        className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none lowercase normal-case bg-white"
-                      />
-                    </div>
-                  </th>
-
-                  {/* Date with Filter */}
-                  <th className="py-4 px-4 font-bold min-w-[150px]">
-                    <span className="block mb-2">Date</span>
-                    <input
-                      type="text"
-                      placeholder="Select Date"
-                      value={searchDate}
-                      onChange={(e) => setSearchDate(e.target.value)}
-                      className="w-full px-2.5 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
-                    />
-                  </th>
-
-                  <th className="py-4 px-4 font-bold min-w-[100px]">Time</th>
-                  <th className="py-4 px-4 font-bold min-w-[120px]">Duration</th>
-
-                  {/* Call Type Dropdown */}
-                  <th className="py-4 px-4 font-bold min-w-[150px]">
-                    <span className="block mb-2">Call Type</span>
-                    <select
-                      value={searchCallType}
-                      onChange={(e) => setSearchCallType(e.target.value)}
-                      className="w-full px-2.5 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white cursor-pointer"
-                    >
-                      <option value="ALL">Select</option>
-                      <option value="INCOMING">Incoming</option>
-                      <option value="OUTGOING">Outgoing</option>
-                      <option value="MISSED">Missed</option>
-                    </select>
-                  </th>
-
-                  {/* Notes with Search */}
-                  <th className="py-4 px-4 font-bold min-w-[180px]">
-                    <span className="block mb-2">Notes</span>
-                    <div className="relative">
-                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search"
-                        value={searchNotes}
-                        onChange={(e) => setSearchNotes(e.target.value)}
-                        className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none lowercase normal-case bg-white"
-                      />
-                    </div>
-                  </th>
-
-                </tr>
-              </thead>
-              
-              <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-400 text-sm font-semibold">
-                      Loading call logs...
-                    </td>
-                  </tr>
-                ) : calls.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-400 text-sm font-semibold">
-                      No call records found under active filters.
-                    </td>
-                  </tr>
-                ) : (
-                  calls.map((call, index) => {
-                    const isIncoming = call.callType === "INCOMING";
-                    const isOutgoing = call.callType === "OUTGOING";
-                    
-                    return (
-                      <tr key={call.id} className="hover:bg-gray-50/50 transition-colors">
-                        {/* Sr No */}
-                        <td className="py-4 px-4 font-bold text-gray-600 text-center">{index + 1}</td>
-                        
-                        {/* Employee info */}
-                        <td className="py-4 px-4 font-medium">
-                          <p className="text-gray-900 font-semibold">{call.importedBy?.name || "System"}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">({call.importedBy?.email.split("@")[0] || "9921640630"})</p>
-                        </td>
-
-                        {/* To Number / Client */}
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <p className="font-semibold text-amber-700 hover:underline cursor-pointer">
-                                {call.contactName || "Unknown"}
-                              </p>
-                              <p className="text-xs text-gray-500 font-medium mt-0.5">{call.mobileNumber}</p>
-                            </div>
-                            <button
-                              onClick={() => togglePin(call.id)}
-                              className={`p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 ${
-                                call.isImportant ? "text-amber-500" : "text-gray-300"
-                              }`}
-                              title={call.isImportant ? "Unpin" : "Pin Call"}
-                            >
-                              <Pin size={13} className={call.isImportant ? "fill-amber-500" : ""} />
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* Date */}
-                        <td className="py-4 px-4 font-medium">
-                          {new Date(call.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </td>
-
-                        {/* Time */}
-                        <td className="py-4 px-4 text-gray-600 font-semibold">
-                          {new Date(call.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                        </td>
-
-                        {/* Duration */}
-                        <td className="py-4 px-4 font-semibold text-gray-900">
-                          {call.callType === "MISSED" ? "—" : formatHMS(call.duration)}
-                        </td>
-
-                        {/* Call Type Badge */}
-                        <td className="py-4 px-4">
-                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg w-fit text-xs font-bold ${
-                            isIncoming
-                              ? "bg-green-50 text-green-700 border border-green-100"
-                              : isOutgoing
-                              ? "bg-blue-50 text-blue-700 border border-blue-100"
-                              : "bg-red-50 text-red-700 border border-red-100"
-                          }`}>
-                            {isIncoming && <PhoneIncoming size={12} />}
-                            {isOutgoing && <PhoneOutgoing size={12} />}
-                            {call.callType === "MISSED" && <PhoneMissed size={12} />}
-                            <span className="capitalize">{call.callType.toLowerCase()}</span>
-                          </div>
-                        </td>
-
-                        {/* Notes */}
-                        <td className="py-4 px-4">
-                          {call.notes && call.notes.length > 0 ? (
-                            <p className="text-xs text-gray-600 font-medium">{call.notes[0].content}</p>
-                          ) : (
-                            <button className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors">
-                              <Plus size={11} />
-                              <span>Add Note</span>
-                            </button>
-                          )}
-                        </td>
-
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {Object.keys(preview[0]).map((key) => (
+                        <th key={key} className="text-left px-4 py-2.5 font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {preview.slice(0, 20).map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        {Object.values(row).map((val: any, j) => (
+                          <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
+                            {String(val ?? "—")}
+                          </td>
+                        ))}
                       </tr>
-                    );
-                  })
+                    ))}
+                  </tbody>
+                </table>
+                {preview.length > 20 && (
+                  <p className="px-4 py-3 text-xs text-gray-400 text-center border-t border-gray-50">
+                    Showing 20 of {preview.length} rows — download for full data
+                  </p>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
 
-      {/* ── Placeholder for other tabs ── */}
-      {activeTab !== "CALL_HISTORY" && (
-        <div className="bg-white rounded-xl border border-gray-150 p-12 text-center">
-          <p className="text-gray-400 text-sm font-semibold">
-            {TABS.find((t) => t.id === activeTab)?.label} report module is being configured.
-          </p>
+          {preview && preview.length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400">
+              <FileText size={32} className="mx-auto mb-3 opacity-30" />
+              <p>No data found for the selected period</p>
+            </div>
+          )}
         </div>
-      )}
-
+      </div>
     </div>
   );
 }

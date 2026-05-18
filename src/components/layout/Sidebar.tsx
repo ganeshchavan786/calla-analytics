@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/call-logs", icon: Phone, label: "Call Logs" },
   { href: "/call-logs/import", icon: Upload, label: "Import" },
   { href: "/analytics", icon: BarChart2, label: "Analytics" },
+  { href: "/analytics-1", icon: BarChart2, label: "Analytics-1" },
   { href: "/reports", icon: FileText, label: "Reports" },
   { href: "/tasks", icon: CheckSquare, label: "Follow-up Tasks" },
   { href: "/notifications", icon: Bell, label: "Notifications" },
