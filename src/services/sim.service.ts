@@ -82,11 +82,15 @@ export class SimService {
     simSlot: string,
     syncedCount: number
   ) {
+    const actualCount = await prisma.callLog.count({
+      where: { importedById: userId, simSlot, deletedAt: null }
+    });
+
     await prisma.registeredSIM.updateMany({
       where: { userId, simSlot },
       data: {
         lastSyncAt: new Date(),
-        totalSynced: { increment: syncedCount },
+        totalSynced: actualCount,
       },
     });
   }
