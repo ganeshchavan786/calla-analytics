@@ -125,7 +125,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <button
           onClick={async () => {
             await fetch("/api/v1/auth/logout", { method: "POST" });
-            window.location.href = "/auth/login";
+            window.location.href = "https://vrushaliinfotech.com";
           }}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
         >
