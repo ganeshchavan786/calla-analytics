@@ -98,7 +98,7 @@ function computeStatsForPeriod(logs: any[], start: Date, end: Date): Comparative
   const rejectedCount = 0; // standard Rejected status tracking baseline
 
   // Never Attended
-  const missedNumbers = new Set(periodLogs.filter(c => c.callType === "MISSED").map(c => c.mobileNumber));
+  const missedNumbers = Array.from(new Set(periodLogs.filter(c => c.callType === "MISSED").map(c => c.mobileNumber)));
   let neverAttendedCount = 0;
   for (const num of missedNumbers) {
     const clientCalls = periodLogs.filter(c => c.mobileNumber === num);
@@ -109,7 +109,7 @@ function computeStatsForPeriod(logs: any[], start: Date, end: Date): Comparative
   }
 
   // Not Pickup by Client
-  const outgoingUnanswered = new Set(periodLogs.filter(c => c.callType === "OUTGOING" && c.duration === 0).map(c => c.mobileNumber));
+  const outgoingUnanswered = Array.from(new Set(periodLogs.filter(c => c.callType === "OUTGOING" && c.duration === 0).map(c => c.mobileNumber)));
   let notPickupCount = 0;
   for (const num of outgoingUnanswered) {
     const clientCalls = periodLogs.filter(c => c.mobileNumber === num);
