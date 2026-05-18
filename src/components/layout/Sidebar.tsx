@@ -1,6 +1,6 @@
 "use client";
-// src/components/layout/Sidebar.tsx
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,6 +25,25 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [orgName, setOrgName] = useState("My Organization");
+
+  useEffect(() => {
+    fetch("/api/v1/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setUser(data.data.user);
+          const orgId = localStorage.getItem("currentOrgId");
+          const orgs = data.data.organizations || [];
+          const activeOrg = orgs.find((o: any) => o.id === orgId) || orgs[0];
+          if (activeOrg) {
+            setOrgName(activeOrg.name);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load user info in sidebar", err));
+  }, []);
 
   return (
     <aside className="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0">
@@ -41,7 +60,7 @@ export function Sidebar() {
         <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm">
           <div className="flex items-center gap-2 min-w-0">
             <Building2 size={14} className="text-gray-400 shrink-0" />
-            <span className="truncate text-gray-200">My Organization</span>
+            <span className="truncate text-gray-200">{orgName}</span>
           </div>
           <ChevronDown size={14} className="text-gray-400 shrink-0" />
         </button>
@@ -72,15 +91,15 @@ export function Sidebar() {
 
       {/* User Footer */}
       <div className="px-4 py-4 border-t border-gray-800">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">
-            U
+        <Link href="/settings/profile" className="flex items-center gap-3 mb-3 p-1.5 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer min-w-0">
+          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white shrink-0 uppercase">
+            {user ? user.name.charAt(0) : "U"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-white truncate">User Name</p>
-            <p className="text-xs text-gray-400 truncate">user@example.com</p>
+            <p className="text-sm font-medium text-white truncate">{user ? user.name : "Loading..."}</p>
+            <p className="text-xs text-gray-400 truncate">{user ? user.email : "..."}</p>
           </div>
-        </div>
+        </Link>
         <button
           onClick={async () => {
             await fetch("/api/v1/auth/logout", { method: "POST" });
