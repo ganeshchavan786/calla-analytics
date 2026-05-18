@@ -298,12 +298,20 @@ export default function CallLogsPage() {
                             className={call.isImportant ? "fill-yellow-400 text-yellow-400" : "text-gray-300 group-hover:text-gray-400"}
                           />
                         </button>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {call.contactName || call.mobileNumber}
-                          </p>
-                          {call.contactName && (
-                            <p className="text-xs text-gray-400">{call.mobileNumber}</p>
+                        <div className="min-w-0">
+                          {call.contactName ? (
+                            <>
+                              <p className="font-semibold text-gray-900 truncate">{call.contactName}</p>
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{call.mobileNumber}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-amber-600 truncate flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                                New Lead
+                              </p>
+                              <p className="text-xs font-semibold text-gray-900 font-mono mt-0.5">{call.mobileNumber}</p>
+                            </>
                           )}
                         </div>
                       </div>
@@ -318,32 +326,47 @@ export default function CallLogsPage() {
                       {call.importedBy?.name || "System"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{formatDateTime(call.date)}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDuration(call.duration)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{call.simSlot.replace("_", " ")}</td>
+                    <td className="px-4 py-3 text-gray-600 font-semibold">
+                      {call.callType === "MISSED" ? (
+                        <span className="text-[10px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded font-bold">
+                          Ring: {call.duration}s
+                        </span>
+                      ) : call.duration === 0 ? (
+                        <span className="text-gray-400 font-normal">—</span>
+                      ) : (
+                        formatDuration(call.duration)
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs font-medium">{call.simSlot.replace("_", " ")}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {call.tags.slice(0, 3).map(({ tag }) => (
-                          <span
-                            key={tag.id}
-                            className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                            style={{ backgroundColor: tag.color }}
-                          >
-                            {tag.name}
-                          </span>
-                        ))}
-                        {call.tags.length > 3 && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500">
-                            +{call.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
+                      {call.tags.length === 0 ? (
+                        <Link href={`/call-logs/${call.id}`} className="text-[10px] font-bold text-gray-400 hover:text-blue-600 hover:border-blue-200 border border-dashed border-gray-200 px-2 py-0.5 rounded transition-all cursor-pointer">
+                          + Add Tag
+                        </Link>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {call.tags.slice(0, 3).map(({ tag }) => (
+                            <span
+                              key={tag.id}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm"
+                              style={{ backgroundColor: tag.color }}
+                            >
+                              {tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      {call._count.notes > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <StickyNote size={12} />
-                          {call._count.notes}
+                      {call._count.notes > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-lg">
+                          <StickyNote size={11} className="text-blue-500" />
+                          <span>{call._count.notes} Note</span>
                         </span>
+                      ) : (
+                        <Link href={`/call-logs/${call.id}`} className="text-[10px] font-bold text-gray-400 hover:text-amber-600 hover:border-amber-200 border border-dashed border-gray-200 px-2 py-0.5 rounded transition-all cursor-pointer">
+                          + Add Note
+                        </Link>
                       )}
                     </td>
                     <td className="px-4 py-3">
