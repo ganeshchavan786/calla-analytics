@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Phone } from "lucide-react";
 import { MyCodeCard } from "@/components/ui/MyCodeCard";
 import { SimStatusCard } from "@/components/ui/SimStatusCard";
+import { formatDateTime } from "@/lib/utils";
 
 interface SIM {
   simSlot: string;
@@ -141,7 +142,7 @@ export default function SettingsPage() {
                             </span>
                             {sim.lastSyncAt && (
                               <span className="text-gray-400 ml-1">
-                                · {new Date(sim.lastSyncAt).toLocaleDateString("en-IN")}
+                                · {formatDateTime(sim.lastSyncAt)}
                               </span>
                             )}
                           </div>
