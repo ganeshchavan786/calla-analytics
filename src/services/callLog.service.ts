@@ -442,25 +442,47 @@ export class CallLogService {
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const chunk = records.slice(i, i + BATCH_SIZE);
       try {
-        const result = await prisma.callLog.createMany({
-          data: chunk.map((r) => ({
+        // Query database to find which of these calls already exist in this organization
+        const existingCalls = await prisma.callLog.findMany({
+          where: {
             organizationId,
-            importedById: userId,
-            importBatchId: batchId,
-            mobileNumber: r.mobileNumber,
-            contactName: r.contactName ?? null,
-            callType: r.callType,
-            date: r.date,
-            duration: r.duration,
-            simSlot: r.simSlot ?? "UNKNOWN",
-            deviceName: r.deviceName ?? null,
-            recordingLink: r.recordingLink ?? null,
-          })),
-          skipDuplicates: true,
+            mobileNumber: { in: chunk.map((r) => r.mobileNumber) },
+            date: { in: chunk.map((r) => r.date) },
+          },
+          select: { mobileNumber: true, date: true },
         });
-        successCount += result.count;
-        failCount += (chunk.length - result.count);
-      } catch {
+
+        const existingSet = new Set(
+          existingCalls.map((c) => `${c.mobileNumber}_${c.date.getTime()}`)
+        );
+
+        // Filter out duplicate records
+        const uniqueChunk = chunk.filter(
+          (r) => !existingSet.has(`${r.mobileNumber}_${r.date.getTime()}`)
+        );
+
+        if (uniqueChunk.length > 0) {
+          await prisma.callLog.createMany({
+            data: uniqueChunk.map((r) => ({
+              organizationId,
+              importedById: userId,
+              importBatchId: batchId,
+              mobileNumber: r.mobileNumber,
+              contactName: r.contactName ?? null,
+              callType: r.callType,
+              date: r.date,
+              duration: r.duration,
+              simSlot: r.simSlot ?? "UNKNOWN",
+              deviceName: r.deviceName ?? null,
+              recordingLink: r.recordingLink ?? null,
+            })),
+          });
+        }
+
+        successCount += uniqueChunk.length;
+        failCount += (chunk.length - uniqueChunk.length);
+      } catch (err) {
+        console.error("Bulk insert failed for chunk", err);
         failCount += chunk.length;
       }
     }
