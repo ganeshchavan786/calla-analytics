@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Phone, BarChart2, FileText, CheckSquare, Bell,
   Settings, LogOut, ChevronDown, Building2, Upload,
-  Home, Users, Activity,
+  Home, Users, Activity, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,12 @@ const NAV_ITEMS = [
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [orgName, setOrgName] = useState("My Organization");
@@ -46,13 +51,28 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0">
+    <aside className={cn(
+      "w-64 bg-gray-900 text-white flex flex-col h-full shrink-0 transition-transform duration-300 ease-in-out z-50",
+      "fixed inset-y-0 left-0 md:relative md:translate-x-0",
+      isOpen ? "translate-x-0" : "-translate-x-full"
+    )}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <Phone size={16} className="text-white" />
+      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <Phone size={16} className="text-white" />
+          </div>
+          <span className="font-bold text-lg tracking-tight text-gray-900">CallLog</span>
         </div>
-        <span className="font-bold text-lg tracking-tight">CallLog</span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors"
+            title="Close Menu"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Org Switcher */}
@@ -75,6 +95,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                 isActive
@@ -91,7 +112,7 @@ export function Sidebar() {
 
       {/* User Footer */}
       <div className="px-4 py-4 border-t border-gray-800">
-        <Link href="/settings/profile" className="flex items-center gap-3 mb-3 p-1.5 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer min-w-0">
+        <Link href="/settings/profile" onClick={onClose} className="flex items-center gap-3 mb-3 p-1.5 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer min-w-0">
           <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white shrink-0 uppercase">
             {user ? user.name.charAt(0) : "U"}
           </div>
