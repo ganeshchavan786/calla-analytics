@@ -95,7 +95,7 @@ function computeStatsForPeriod(logs: any[], start: Date, end: Date): Comparative
   const callDuration = incomingDuration + outgoingDuration;
   
   const missedCount = periodLogs.filter(c => c.callType === "MISSED").length;
-  const rejectedCount = 0; // standard Rejected status tracking baseline
+  const rejectedCount = periodLogs.filter(c => c.callType === "REJECTED").length;
 
   // Never Attended
   const missedNumbers = Array.from(new Set(periodLogs.filter(c => c.callType === "MISSED").map(c => c.mobileNumber)));
@@ -150,16 +150,32 @@ export default function DashboardPage() {
   const [rawLogs, setRawLogs] = useState<any[]>([]);
   const [period, setPeriod] = useState("7d");
   const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState("ALL");
 
   const orgId = typeof window !== "undefined"
     ? localStorage.getItem("currentOrgId") || ""
     : "";
 
+  // Load members on mount
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/organizations/${orgId}/members`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setMembers(data.data);
+        }
+      })
+      .catch((err) => console.error("Failed to load members", err));
+  }, [orgId]);
+
   // Fetch analytics
   const fetchAnalytics = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
-    const base = `/api/v1/organizations/${orgId}/analytics?period=${period}`;
+    const userFilter = selectedUser !== "ALL" ? `&userId=${selectedUser}` : "";
+    const base = `/api/v1/organizations/${orgId}/analytics?period=${period}${userFilter}`;
     try {
       const [s, t, h, l] = await Promise.all([
         fetch(`${base}&type=overview`),
@@ -177,7 +193,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, period]);
+  }, [orgId, period, selectedUser]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -209,9 +225,13 @@ export default function DashboardPage() {
   const startOfLastWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0);
   const endOfLastWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
 
-  const todayStats = computeStatsForPeriod(rawLogs, startOfToday, endOfToday);
-  const yesterdayStats = computeStatsForPeriod(rawLogs, startOfYesterday, endOfYesterday);
-  const lastWeekStats = computeStatsForPeriod(rawLogs, startOfLastWeek, endOfLastWeek);
+  const filteredLogs = selectedUser === "ALL"
+    ? rawLogs
+    : rawLogs.filter((log) => log.importedById === selectedUser);
+
+  const todayStats = computeStatsForPeriod(filteredLogs, startOfToday, endOfToday);
+  const yesterdayStats = computeStatsForPeriod(filteredLogs, startOfYesterday, endOfYesterday);
+  const lastWeekStats = computeStatsForPeriod(filteredLogs, startOfLastWeek, endOfLastWeek);
 
   const formatDate = (d: Date) => {
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -232,7 +252,20 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">Call activity overview</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedUser}
+            onChange={(e) => setSelectedUser(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer mr-2"
+          >
+            <option value="ALL">All Employees</option>
+            {members.map((m) => (
+              <option key={m.userId} value={m.userId}>
+                {m.user.name} ({m.role.toLowerCase()})
+              </option>
+            ))}
+          </select>
+
           {PERIODS.map((p) => (
             <button
               key={p.value}

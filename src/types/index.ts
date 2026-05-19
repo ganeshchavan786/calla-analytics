@@ -7,7 +7,7 @@
 
 export type MemberRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
 
-export type CallType = "INCOMING" | "OUTGOING" | "MISSED";
+export type CallType = "INCOMING" | "OUTGOING" | "MISSED" | "REJECTED";
 
 export type SimSlot = "SIM_1" | "SIM_2" | "UNKNOWN";
 
