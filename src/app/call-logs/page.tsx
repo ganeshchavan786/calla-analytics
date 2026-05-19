@@ -166,13 +166,6 @@ export default function CallLogsPage() {
             <Upload size={15} className="rotate-180" />
             {exporting ? "Exporting..." : "Export CSV"}
           </button>
-          <Link
-            href="/call-logs/new"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={15} />
-            Add Call
-          </Link>
         </div>
       </div>
 
@@ -273,7 +266,7 @@ export default function CallLogsPage() {
                 <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
                   <Phone size={32} className="mx-auto mb-3 opacity-30" />
                   <p>No call logs found</p>
-                  <p className="text-xs mt-1">Import call logs or add manually</p>
+                  <p className="text-xs mt-1 text-gray-500 font-medium">Calls will automatically sync here from the mobile app</p>
                 </td>
               </tr>
             ) : (
