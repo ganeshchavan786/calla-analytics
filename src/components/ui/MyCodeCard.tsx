@@ -60,7 +60,7 @@ export function MyCodeCard({ code, codeType }: MyCodeCardProps) {
 
       {/* Info text */}
       <p className={`text-xs mt-3 ${isOwner ? "text-purple-600" : "text-blue-600"}`}>
-        <span className="font-semibold">Mobile App मध्ये:</span> Email + Password + हा Code enter करा → Sync सुरू होईल
+        <span className="font-semibold">In Mobile App:</span> Enter Email + Password + this Code → Sync will start
       </p>
     </div>
   );

@@ -74,17 +74,17 @@ export default function DocsPage() {
       <div className="bg-blue-50 border-b border-blue-200 px-6 py-3">
         <div className="max-w-4xl flex flex-wrap gap-6 text-sm text-blue-800">
           <div>
-            <span className="font-semibold">Step 1:</span> Login करा{" "}
+            <span className="font-semibold">Step 1:</span> Login using{" "}
             <code className="bg-blue-100 px-1 rounded">POST /api/v1/auth/login</code>
           </div>
           <div>
-            <span className="font-semibold">Step 2:</span> Token copy करा
+            <span className="font-semibold">Step 2:</span> Copy the JWT Token
           </div>
           <div>
-            <span className="font-semibold">Step 3:</span> Authorize button click करा → token paste करा
+            <span className="font-semibold">Step 3:</span> Click Authorize → paste Token
           </div>
           <div>
-            <span className="font-semibold">Step 4:</span> कोणतीही API try करा!
+            <span className="font-semibold">Step 4:</span> Try any API endpoint!
           </div>
         </div>
       </div>
