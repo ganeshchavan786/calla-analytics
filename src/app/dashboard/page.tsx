@@ -148,7 +148,7 @@ export default function DashboardPage() {
   const [trends, setTrends] = useState<Trend[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
   const [rawLogs, setRawLogs] = useState<any[]>([]);
-  const [period, setPeriod] = useState("7d");
+  const [period, setPeriod] = useState("today");
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState("ALL");
@@ -170,24 +170,35 @@ export default function DashboardPage() {
       .catch((err) => console.error("Failed to load members", err));
   }, [orgId]);
 
-  // Fetch analytics
+  // Load raw logs once on mount/orgId change
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/organizations/${orgId}/call-logs?limit=3000`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setRawLogs(data.data.data);
+        }
+      })
+      .catch((err) => console.error("Failed to load raw logs", err));
+  }, [orgId]);
+
+  // Fetch analytics (overview, trends, heatmap)
   const fetchAnalytics = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
     const userFilter = selectedUser !== "ALL" ? `&userId=${selectedUser}` : "";
     const base = `/api/v1/organizations/${orgId}/analytics?period=${period}${userFilter}`;
     try {
-      const [s, t, h, l] = await Promise.all([
+      const [s, t, h] = await Promise.all([
         fetch(`${base}&type=overview`),
         fetch(`${base}&type=trends`),
         fetch(`${base}&type=heatmap`),
-        fetch(`/api/v1/organizations/${orgId}/call-logs?limit=3000`),
       ]);
-      const [sd, td, hd, ld] = await Promise.all([s.json(), t.json(), h.json(), l.json()]);
+      const [sd, td, hd] = await Promise.all([s.json(), t.json(), h.json()]);
       if (sd.success) setStats(sd.data);
       if (td.success) setTrends(td.data);
       if (hd.success) setHeatmap(hd.data);
-      if (ld.success) setRawLogs(ld.data.data);
     } catch (e) {
       console.error(e);
     } finally {
