@@ -23,12 +23,14 @@ const CallRecordSchema = z.object({
   duration: z.number().int().min(0).default(0),
   simSlot: z.enum(["SIM_1", "SIM_2", "UNKNOWN"]).default("UNKNOWN"),
   deviceName: z.string().max(200).optional().nullable(),
+  deviceId: z.string().max(200).optional().nullable(),
   recordingLink: z.string().url().optional().nullable(),
 });
 
 const SyncSchema = z.object({
   records: z.array(CallRecordSchema).min(1).max(5000),
   simSlot: z.enum(["SIM_1", "SIM_2", "UNKNOWN"]).optional(),
+  deviceId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -86,7 +88,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { records, simSlot } = parsed.data;
+    const { records, simSlot, deviceId } = parsed.data;
+    const activeDeviceId = deviceId || records[0]?.deviceId || "unknown";
 
     // ── Step 4: Employee + Organization info confirm ──
     const [employee, organization] = await Promise.all([
@@ -118,8 +121,9 @@ export async function POST(req: NextRequest) {
     if (simSlot && simSlot !== "UNKNOWN") {
       const registeredSIM = await prisma.registeredSIM.findUnique({
         where: {
-          userId_simSlot: {
+          userId_deviceId_simSlot: {
             userId: payload.userId,
+            deviceId: activeDeviceId,
             simSlot: simSlot,
           },
         },
@@ -169,7 +173,7 @@ export async function POST(req: NextRequest) {
 
     // ── Step 9: SIM lastSyncAt update ──
     if (simSlot && simSlot !== "UNKNOWN") {
-      await SimService.updateLastSync(payload.userId, simSlot, successCount);
+      await SimService.updateLastSync(payload.userId, simSlot, successCount, activeDeviceId);
     }
 
     // ── Step 10: Missed calls notification ──

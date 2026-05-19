@@ -92,6 +92,7 @@ model RegisteredSIM {
   simSlot        String    // "SIM_1" | "SIM_2"
   phoneNumber    String
   deviceName     String?
+  deviceId       String    @default("unknown")
   isActive       Boolean   @default(true)
   lastSyncAt     DateTime?
   totalSynced    Int       @default(0)
@@ -101,7 +102,7 @@ model RegisteredSIM {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, simSlot])
+  @@unique([userId, deviceId, simSlot])
   @@index([userId])
   @@index([organizationId])
   @@index([phoneNumber])

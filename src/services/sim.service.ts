@@ -15,17 +15,31 @@ export class SimService {
     organizationId: string,
     simSlot: "SIM_1" | "SIM_2",
     phoneNumber: string,
-    deviceName?: string
+    deviceName?: string,
+    deviceId?: string
   ) {
+    const dId = deviceId || "unknown";
     // Already registered आहे का check करा
     const existing = await prisma.registeredSIM.findUnique({
-      where: { userId_simSlot: { userId, simSlot } },
+      where: {
+        userId_deviceId_simSlot: {
+          userId,
+          deviceId: dId,
+          simSlot,
+        },
+      },
     });
 
     if (existing) {
       // Update करा — phone number बदलला असेल
       return prisma.registeredSIM.update({
-        where: { userId_simSlot: { userId, simSlot } },
+        where: {
+          userId_deviceId_simSlot: {
+            userId,
+            deviceId: dId,
+            simSlot,
+          },
+        },
         data: {
           phoneNumber,
           deviceName: deviceName ?? existing.deviceName,
@@ -43,6 +57,7 @@ export class SimService {
         simSlot,
         phoneNumber,
         deviceName: deviceName ?? null,
+        deviceId: dId,
         isActive: true,
       },
     });
@@ -80,14 +95,16 @@ export class SimService {
   static async updateLastSync(
     userId: string,
     simSlot: string,
-    syncedCount: number
+    syncedCount: number,
+    deviceId?: string
   ) {
+    const dId = deviceId || "unknown";
     const actualCount = await prisma.callLog.count({
       where: { importedById: userId, simSlot, deletedAt: null }
     });
 
     await prisma.registeredSIM.updateMany({
-      where: { userId, simSlot },
+      where: { userId, deviceId: dId, simSlot },
       data: {
         lastSyncAt: new Date(),
         totalSynced: actualCount,
@@ -98,9 +115,10 @@ export class SimService {
   // ─────────────────────────────────────────
   // SIM deactivate करा
   // ─────────────────────────────────────────
-  static async deactivateSIM(userId: string, simSlot: string) {
+  static async deactivateSIM(userId: string, simSlot: string, deviceId?: string) {
+    const dId = deviceId || "unknown";
     await prisma.registeredSIM.updateMany({
-      where: { userId, simSlot },
+      where: { userId, deviceId: dId, simSlot },
       data: { isActive: false },
     });
   }

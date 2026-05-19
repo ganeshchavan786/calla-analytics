@@ -15,6 +15,7 @@ const RegisterSIMSchema = z.object({
   simSlot: z.enum(["SIM_1", "SIM_2"]),
   phoneNumber: z.string().min(7).max(20),
   deviceName: z.string().max(200).optional(),
+  deviceId: z.string().max(200).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { simSlot, phoneNumber, deviceName } = parsed.data;
+    const { simSlot, phoneNumber, deviceName, deviceId } = parsed.data;
 
     // ─── Organization मिळवा ───
     const membership = await prisma.organizationMember.findFirst({
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
       membership.organizationId,
       simSlot,
       phoneNumber,
-      deviceName
+      deviceName,
+      deviceId
     );
 
     // ─── Audit log ───
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
       action: "call_imported", // reuse existing action
       entityType: "user",
       entityId: payload.userId,
-      metadata: { event: "sim_registered", simSlot, phoneNumber, deviceName },
+      metadata: { event: "sim_registered", simSlot, phoneNumber, deviceName, deviceId },
     });
 
     return NextResponse.json({
