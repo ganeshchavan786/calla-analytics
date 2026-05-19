@@ -75,7 +75,7 @@ export const CreateCallLogSchema = z.object({
     .max(20)
     .regex(/^[+\d\s\-()]+$/, "Invalid phone number format"),
   contactName: z.string().max(200).optional().nullable(),
-  callType: z.enum(["INCOMING", "OUTGOING", "MISSED"]),
+  callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "REJECTED"]),
   date: z.string().datetime(),
   duration: z.number().int().min(0).default(0),
   simSlot: z.enum(["SIM_1", "SIM_2", "UNKNOWN"]).default("UNKNOWN"),
@@ -92,7 +92,7 @@ export const UpdateCallLogSchema = CreateCallLogSchema.partial().omit({
 export const CallLogFiltersSchema = z.object({
   mobileNumber: z.string().optional(),
   contactName: z.string().optional(),
-  callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "ALL"]).optional(),
+  callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "REJECTED", "ALL"]).optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   durationMin: z.coerce.number().optional(),
@@ -182,7 +182,7 @@ export const ReportConfigSchema = z.object({
   dateFrom: z.string(),
   dateTo: z.string(),
   userId: z.string().optional(),
-  callType: z.enum(["INCOMING", "OUTGOING", "MISSED"]).optional(),
+  callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "REJECTED"]).optional(),
   format: z.enum(["PDF", "EXCEL", "CSV"]).optional().default("CSV"),
 });
 
@@ -200,7 +200,7 @@ export const ApiImportSchema = z.object({
       z.object({
         mobileNumber: z.string().min(7).max(20),
         contactName: z.string().max(200).optional(),
-        callType: z.enum(["INCOMING", "OUTGOING", "MISSED"]),
+        callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "REJECTED"]),
         date: z.string().datetime(),
         duration: z.number().int().min(0).default(0),
         simSlot: z.enum(["SIM_1", "SIM_2", "UNKNOWN"]).optional(),

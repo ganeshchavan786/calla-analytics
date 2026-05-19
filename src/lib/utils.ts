@@ -44,6 +44,7 @@ export function getCallTypeColor(callType: string): string {
     case "INCOMING": return "text-green-600 bg-green-50";
     case "OUTGOING": return "text-blue-600 bg-blue-50";
     case "MISSED": return "text-red-600 bg-red-50";
+    case "REJECTED": return "text-amber-600 bg-amber-50";
     default: return "text-gray-600 bg-gray-50";
   }
 }

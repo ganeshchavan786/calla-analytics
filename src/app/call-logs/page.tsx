@@ -2,7 +2,7 @@
 // src/app/call-logs/page.tsx
 
 import { useEffect, useState, useCallback } from "react";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Star, StickyNote, Plus, Upload, Search } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, PhoneOff, Star, StickyNote, Plus, Upload, Search } from "lucide-react";
 import Link from "next/link";
 import { formatDateTime, formatDuration, getCallTypeColor, cn } from "@/lib/utils";
 
@@ -25,6 +25,7 @@ const CALL_TYPE_ICONS = {
   INCOMING: PhoneIncoming,
   OUTGOING: PhoneOutgoing,
   MISSED: PhoneMissed,
+  REJECTED: PhoneOff,
 };
 
 export default function CallLogsPage() {
@@ -147,6 +148,7 @@ export default function CallLogsPage() {
     { value: "INCOMING", label: "Incoming" },
     { value: "OUTGOING", label: "Outgoing" },
     { value: "MISSED", label: "Missed" },
+    { value: "REJECTED", label: "Rejected" },
   ];
 
   return (

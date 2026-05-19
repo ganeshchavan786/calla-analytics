@@ -18,7 +18,7 @@ import { z } from "zod";
 const CallRecordSchema = z.object({
   mobileNumber: z.string().min(7).max(20),
   contactName: z.string().max(200).optional().nullable(),
-  callType: z.enum(["INCOMING", "OUTGOING", "MISSED"]),
+  callType: z.enum(["INCOMING", "OUTGOING", "MISSED", "REJECTED"]),
   date: z.string().datetime(),
   duration: z.number().int().min(0).default(0),
   simSlot: z.enum(["SIM_1", "SIM_2", "UNKNOWN"]).default("UNKNOWN"),
