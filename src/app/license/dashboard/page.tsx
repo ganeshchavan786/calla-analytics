@@ -8,6 +8,7 @@ import {
   Shield, Users, Building2, Phone, LogOut,
   Settings, Mail, RefreshCw, CheckCircle,
   XCircle, Clock, Search, Send, Play, Server,
+  CreditCard, Eye, EyeOff, ExternalLink,
 } from "lucide-react";
 
 // =============================================================
@@ -73,7 +74,7 @@ interface Organization {
   };
 }
 
-type Tab = "dashboard" | "smtp" | "organizations" | "users" | "cron";
+type Tab = "dashboard" | "smtp" | "organizations" | "users" | "cron" | "payment";
 
 // =============================================================
 // MAIN COMPONENT
@@ -110,6 +111,19 @@ export default function LicenseDashboard() {
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [smtpMsg, setSmtpMsg] = useState("");
   const [smtpTesting, setSmtpTesting] = useState(false);
+
+  // Payment Gateway
+  const [paymentSettings, setPaymentSettings] = useState({
+    paymentEnabled: false,
+    paymentMode: "test" as "test" | "live",
+    razorpayKeyId: "",
+    razorpayKeySecret: "",
+    hasSecret: false,
+  });
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentMsg, setPaymentMsg] = useState("");
+  const [paymentTesting, setPaymentTesting] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   // Users tab
   const [userSearch, setUserSearch] = useState("");
@@ -160,13 +174,14 @@ export default function LicenseDashboard() {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [usersRes, smtpRes, cronRes] = await Promise.all([
+      const [usersRes, smtpRes, cronRes, paymentRes] = await Promise.all([
         fetch("/api/license/users?limit=5"),
         fetch("/api/license/smtp"),
         fetch("/api/license/cron"),
+        fetch("/api/license/payment-settings"),
       ]);
-      const [usersData, smtpData, cronData] = await Promise.all([
-        usersRes.json(), smtpRes.json(), cronRes.json(),
+      const [usersData, smtpData, cronData, paymentData] = await Promise.all([
+        usersRes.json(), smtpRes.json(), cronRes.json(), paymentRes.json(),
       ]);
 
       if (usersData.success) {
@@ -175,6 +190,7 @@ export default function LicenseDashboard() {
       }
       if (smtpData.success) setSmtp(smtpData.data);
       if (cronData.success) setCronJobs(cronData.data.jobs);
+      if (paymentData.success) setPaymentSettings(paymentData.data);
     } finally {
       setLoading(false);
     }
@@ -360,6 +376,7 @@ export default function LicenseDashboard() {
     { tab: "organizations", label: "Organizations", icon: Building2 },
     { tab: "users", label: "Users", icon: Users },
     { tab: "smtp", label: "SMTP Settings", icon: Mail },
+    { tab: "payment", label: "Payment Gateway", icon: CreditCard },
     { tab: "cron", label: "Cron Jobs", icon: Clock },
   ];
 
@@ -1288,6 +1305,199 @@ export default function LicenseDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ========== PAYMENT GATEWAY TAB ========== */}
+        {activeTab === "payment" && (
+          <div className="space-y-8 max-w-4xl animate-fade-in">
+            <div>
+              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 dark:from-white dark:via-zinc-200 dark:to-zinc-400 tracking-tight">Payment Gateway Configuration</h1>
+              <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">Configure Razorpay credentials for subscription billing. Credentials are encrypted with AES-256.</p>
+            </div>
+
+            {/* Info Banner */}
+            <div className="bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-2xl px-5 py-3.5 flex items-start gap-3">
+              <span className="text-indigo-500 text-base mt-0.5">💡</span>
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium leading-relaxed">
+                Credentials are encrypted and stored securely in the database. You can easily switch to PhonePe, Stripe, or other gateways in the future.
+              </p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setPaymentSaving(true); setPaymentMsg("");
+              try {
+                const res = await fetch("/api/license/payment-settings", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(paymentSettings),
+                });
+                const data = await res.json();
+                setPaymentMsg(data.success ? "✅ Payment settings saved successfully!" : `❌ ${data.message || "Save failed"}`);
+                if (data.success) {
+                  // Re-fetch to get masked secret
+                  const r = await fetch("/api/license/payment-settings");
+                  const d = await r.json();
+                  if (d.success) setPaymentSettings(d.data);
+                }
+              } catch { setPaymentMsg("❌ Network error"); }
+              setPaymentSaving(false);
+            }} className="bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 rounded-3xl p-8 space-y-8 backdrop-blur-md shadow-md relative overflow-hidden transition-colors duration-300">
+
+              {/* Glow */}
+              <div className="absolute -top-12 -right-12 w-28 h-28 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none" />
+
+              {/* Status Message */}
+              {paymentMsg && (
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold ${
+                  paymentMsg.startsWith("✅")
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20"
+                    : "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20"
+                }`}>
+                  <span className="text-base">{paymentMsg.startsWith("✅") ? "✨" : "⚠️"}</span>
+                  <span>{paymentMsg}</span>
+                </div>
+              )}
+
+              {/* Payment Mode */}
+              <div>
+                <h3 className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <CreditCard size={14} className="text-indigo-500" /> Payment Gateway Mode
+                </h3>
+                <select
+                  value={paymentSettings.paymentMode}
+                  onChange={e => setPaymentSettings(s => ({ ...s, paymentMode: e.target.value as "test" | "live" }))}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                >
+                  <option value="test">Test Mode (Sandbox)</option>
+                  <option value="live">Live Mode (Production)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1.5 flex items-center gap-1">
+                  {paymentSettings.paymentMode === "test" ? (
+                    <><span className="text-amber-500">✏️</span> Test mode — use test credentials. No real charges.</>  
+                  ) : (
+                    <><span className="text-emerald-500">🔴</span> Live mode — real payments will be processed!</>  
+                  )}
+                </p>
+              </div>
+
+              {/* Razorpay Credentials */}
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Razorpay Key ID</label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentSettings.razorpayKeyId}
+                    onChange={e => setPaymentSettings(s => ({ ...s, razorpayKeyId: e.target.value }))}
+                    placeholder="rzp_test_... or rzp_live_..."
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-300 dark:placeholder-zinc-600 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <span>🔐</span> Razorpay Key Secret (Encrypted)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSecret ? "text" : "password"}
+                      required
+                      value={paymentSettings.razorpayKeySecret}
+                      onChange={e => setPaymentSettings(s => ({ ...s, razorpayKeySecret: e.target.value }))}
+                      placeholder="Enter your Razorpay secret key..."
+                      className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-300 dark:placeholder-zinc-600 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(!showSecret)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors"
+                    >
+                      {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1.5 flex items-center gap-1">
+                    <span>🔒</span> Stored encrypted with AES-256-GCM
+                  </p>
+                </div>
+              </div>
+
+              {/* Enable Toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentSettings(s => ({ ...s, paymentEnabled: !s.paymentEnabled }))}
+                  className={`relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ${
+                    paymentSettings.paymentEnabled
+                      ? "bg-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.4)]"
+                      : "bg-slate-200 border border-slate-300 dark:bg-zinc-800 dark:border-zinc-700"
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    paymentSettings.paymentEnabled ? "translate-x-5" : ""
+                  }`} />
+                </button>
+                <span className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-wider">Enable Payment Gateway</span>
+              </div>
+
+              {/* How to get credentials */}
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-2xl p-5">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-zinc-200 flex items-center gap-2 mb-3">
+                  📋 How to get Razorpay credentials:
+                </h4>
+                <ol className="text-xs text-slate-500 dark:text-zinc-400 space-y-1.5 list-decimal list-inside">
+                  <li>Go to <a href="https://dashboard.razorpay.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1">Razorpay Dashboard <ExternalLink size={10} /></a></li>
+                  <li>Navigate to Settings → API Keys</li>
+                  <li>Generate keys for Test or Live mode</li>
+                  <li>Copy Key ID and Key Secret</li>
+                  <li>Paste here and save</li>
+                </ol>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  type="submit"
+                  disabled={paymentSaving}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-extrabold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                >
+                  {paymentSaving ? (
+                    <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                  ) : (
+                    <>💾 Save Settings</>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={paymentTesting}
+                  onClick={async () => {
+                    setPaymentTesting(true); setPaymentMsg("");
+                    try {
+                      const res = await fetch("/api/license/payment-settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "test" }),
+                      });
+                      const data = await res.json();
+                      setPaymentMsg(data.success
+                        ? "✅ Razorpay connection successful! Credentials are valid."
+                        : `❌ ${data.message || "Connection failed"}`
+                      );
+                    } catch { setPaymentMsg("❌ Network error — could not reach server"); }
+                    setPaymentTesting(false);
+                  }}
+                  className="w-full py-3 bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800/30 text-slate-600 dark:text-zinc-300 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {paymentTesting ? (
+                    <><span className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /> Testing...</>
+                  ) : (
+                    <>🔌 Test Connection</>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

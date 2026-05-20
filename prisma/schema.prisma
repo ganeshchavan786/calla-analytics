@@ -433,6 +433,12 @@ model LicenseSettings {
   cronReportTime     String   @default("09:00")
   cronReportEnabled  Boolean  @default(true)
 
+  // Payment Gateway Config (Razorpay)
+  paymentEnabled     Boolean  @default(false)
+  paymentMode        String   @default("test")   // "test" | "live"
+  razorpayKeyId      String   @default("")
+  razorpayKeySecret  String   @default("")       // stored AES-256-GCM encrypted
+
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
