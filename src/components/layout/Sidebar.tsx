@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Phone, BarChart2, FileText, CheckSquare, Bell,
   Settings, LogOut, ChevronDown, Building2, Upload,
-  Home, Users, Activity, X,
+  Home, Users, Activity, X, CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/notifications", icon: Bell, label: "Notifications" },
   { href: "/activity", icon: Activity, label: "Activity Log" },
   { href: "/settings/members", icon: Users, label: "Team Members" },
+  { href: "/settings/billing", icon: CreditCard, label: "Billing & Plan" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
