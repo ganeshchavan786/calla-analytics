@@ -152,6 +152,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState("ALL");
+  const [subscriptionError, setSubscriptionError] = useState<{ error: string; message: string } | null>(null);
 
   const orgId = typeof window !== "undefined"
     ? localStorage.getItem("currentOrgId") || ""
@@ -176,6 +177,12 @@ export default function DashboardPage() {
     fetch(`/api/v1/organizations/${orgId}/call-logs?limit=3000`)
       .then((res) => res.json())
       .then((data) => {
+        if (!data.success) {
+          if (data.error === "ORGANIZATION_BLOCKED" || data.error === "SUBSCRIPTION_EXPIRED") {
+            setSubscriptionError({ error: data.error, message: data.message });
+            return;
+          }
+        }
         if (data.success) {
           setRawLogs(data.data.data);
         }
@@ -196,6 +203,13 @@ export default function DashboardPage() {
         fetch(`${base}&type=heatmap`),
       ]);
       const [sd, td, hd] = await Promise.all([s.json(), t.json(), h.json()]);
+      if (!sd.success) {
+        if (sd.error === "ORGANIZATION_BLOCKED" || sd.error === "SUBSCRIPTION_EXPIRED") {
+          setSubscriptionError({ error: sd.error, message: sd.message });
+          return;
+        }
+      }
+      setSubscriptionError(null);
       if (sd.success) setStats(sd.data);
       if (td.success) setTrends(td.data);
       if (hd.success) setHeatmap(hd.data);
@@ -253,6 +267,73 @@ export default function DashboardPage() {
     const e = end.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
     return `${s} to ${e}`;
   };
+
+  if (subscriptionError) {
+    const isBlocked = subscriptionError.error === "ORGANIZATION_BLOCKED";
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6 bg-gray-50/50 backdrop-blur-sm rounded-3xl border border-gray-150">
+        <div className="max-w-xl w-full text-center space-y-6 bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+          {/* Top glowing decorative bar */}
+          <div className={`absolute top-0 left-0 right-0 h-2 ${isBlocked ? "bg-red-500 animate-pulse" : "bg-indigo-600 animate-pulse"}`} />
+
+          {/* Icon Section */}
+          <div className="flex justify-center">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center animate-bounce shadow-lg ${isBlocked ? "bg-red-50 text-red-500 shadow-red-100" : "bg-indigo-50 text-indigo-600 shadow-indigo-100"}`}>
+              {isBlocked ? <XOctagon size={40} /> : <AlertCircle size={40} />}
+            </div>
+          </div>
+
+          {/* Title & Description */}
+          <div className="space-y-3">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
+              {isBlocked ? "आपली संस्था निलंबित करण्यात आली आहे" : "सबस्क्रिप्शन कालावधी संपला आहे"}
+            </h1>
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+              {isBlocked 
+                ? "सुरक्षा किंवा पेमेंट संदर्भातील कारणांमुळे आपल्या संस्थेचे खाते ब्लॉक करण्यात आले आहे. कृपया या समस्येचे लवकरात लवकर निवारण करण्यासाठी आमच्या सपोर्ट टीमशी संपर्क साधा."
+                : "आपल्या कॉललॉग SaaS चा विनामूल्य ट्रायल कालावधी किंवा सबस्क्रिप्शन पूर्ण झाले आहे. पुढील सेवा सुरू ठेवण्यासाठी कृपया प्लॅन नूतनीकरण करा किंवा ॲडमिनशी संपर्क साधा."
+              }
+            </p>
+          </div>
+
+          {/* Core Premium Features Reminder to Entice Them */}
+          {!isBlocked && (
+            <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 text-left space-y-3">
+              <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">💎 Enterprise प्रिमियम फीचर्स:</p>
+              <ul className="text-xs text-gray-700 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> <strong>अमर्यादित कर्मचारी आणि सिम कार्ड</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> <strong>अमर्यादित कॉल्स सिंक + अनालिटिक्स इतिहास</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> <strong>कॉल लॉग्ज Excel (.xlsx), CSV आणि PDF मध्ये डाऊनलोड करा</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-500">✓</span> <strong>दैनिक रिपोर्ट आणि २४/७ प्रायोरिटी सपोर्ट</strong>
+                </li>
+              </ul>
+            </div>
+          )}
+
+          {/* Action button */}
+          <div className="pt-2">
+            <a
+              href="mailto:support@calllogsaas.com"
+              className={`inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-bold text-white text-sm transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] ${
+                isBlocked
+                  ? "bg-red-600 hover:bg-red-700 shadow-red-600/10"
+                  : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/10"
+              }`}
+            >
+              {isBlocked ? "सपोर्ट टीमशी संपर्क साधा" : "प्लॅन नूतनीकरण करा / सपोर्ट संपर्क"}
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

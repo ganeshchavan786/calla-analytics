@@ -63,6 +63,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const organization = await prisma.organization.findUnique({
+      where: { id: membership.organizationId },
+      select: { id: true, name: true, status: true, planType: true, subscriptionEndDate: true },
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { success: false, error: "NOT_FOUND", message: "Organization not found" },
+        { status: 404 }
+      );
+    }
+
+    // ─── Subscription & Block Check ───
+    if (organization.status === "BLOCKED" || organization.status === "SUSPENDED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ORGANIZATION_BLOCKED",
+          message: "Your organization has been suspended. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (organization.subscriptionEndDate && organization.subscriptionEndDate < new Date()) {
+      const message = organization.planType === "FREE_TRIAL"
+        ? "Your 7-day free trial has expired. Please buy the Enterprise Plan to continue."
+        : "Your subscription has expired. Please renew the Enterprise Plan to continue.";
+      return NextResponse.json(
+        {
+          success: false,
+          error: "SUBSCRIPTION_EXPIRED",
+          message,
+        },
+        { status: 402 }
+      );
+    }
+
     // ─── SIM Register करा ───
     const sim = await SimService.registerSIM(
       payload.userId,

@@ -39,7 +39,7 @@ export const GET = withLicenseAuth(async (req) => {
           memberships: {
             select: {
               role: true,
-              organization: { select: { id: true, name: true } },
+              organization: { select: { id: true, name: true, status: true, planType: true, subscriptionEndDate: true } },
             },
             take: 1,
           },

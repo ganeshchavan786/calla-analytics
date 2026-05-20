@@ -11,11 +11,18 @@ export class OrganizationService {
   static async create(userId: string, name: string, timezone = "UTC") {
     const slug = generateSlug(name);
 
+    // Calculate trial expiry date: exactly 7 days from now
+    const subEndDate = new Date();
+    subEndDate.setDate(subEndDate.getDate() + 7);
+
     const org = await prisma.organization.create({
       data: {
         name,
         slug: await ensureUniqueSlug(slug),
         timezone,
+        status: "ACTIVE",
+        planType: "FREE_TRIAL",
+        subscriptionEndDate: subEndDate,
         members: {
           create: { userId, role: "OWNER" },
         },

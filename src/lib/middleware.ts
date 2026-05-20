@@ -61,6 +61,27 @@ export function withAuth(handler: ApiHandler, requiredRole?: MemberRole) {
       });
       if (!membership) return apiError("FORBIDDEN", "You are not a member of this organization", 403);
 
+      // Check organization status and subscription expiry
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { status: true, planType: true, subscriptionEndDate: true },
+      });
+
+      if (!organization) {
+        return apiError("NOT_FOUND", "Organization not found", 404);
+      }
+
+      if (organization.status === "BLOCKED" || organization.status === "SUSPENDED") {
+        return apiError("ORGANIZATION_BLOCKED", "Your organization has been suspended. Please contact support.", 403);
+      }
+
+      if (organization.subscriptionEndDate && organization.subscriptionEndDate < new Date()) {
+        const message = organization.planType === "FREE_TRIAL"
+          ? "Your 7-day free trial has expired. Please buy the Enterprise Plan to continue."
+          : "Your subscription has expired. Please renew the Enterprise Plan to continue.";
+        return apiError("SUBSCRIPTION_EXPIRED", message, 402);
+      }
+
       const role = membership.role as MemberRole;
 
       if (requiredRole && !hasPermission(role, requiredRole)) {

@@ -23,13 +23,16 @@ datasource db {
 // =============================================================
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  logoUrl   String?
-  timezone  String   @default("UTC")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  name                String
+  slug                String    @unique
+  logoUrl             String?
+  timezone            String    @default("UTC")
+  status              String    @default("ACTIVE")      // ACTIVE, BLOCKED, SUSPENDED
+  planType            String    @default("FREE_TRIAL")  // FREE_TRIAL, ACTIVE_PAID
+  subscriptionEndDate DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   members        OrganizationMember[]
   callLogs       CallLog[]

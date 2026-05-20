@@ -41,3 +41,7 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/
+
+# Local Testing Scripts (Never send to VPS)
+check-sync.js
+check-today-calls.js
