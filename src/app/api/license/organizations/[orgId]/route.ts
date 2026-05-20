@@ -39,9 +39,19 @@ export const POST = withLicenseAuth(async (req) => {
       if (planType !== "FREE_TRIAL" && planType !== "ACTIVE_PAID") {
         return licenseApiError("BAD_REQUEST", "Invalid plan type. Must be FREE_TRIAL or ACTIVE_PAID", 400);
       }
+
+      // Set subscription end date based on plan type
+      let newEndDate: Date | null = null;
+      if (planType === "FREE_TRIAL") {
+        // Free trial = 7 days from now
+        newEndDate = new Date();
+        newEndDate.setDate(newEndDate.getDate() + 7);
+      }
+      // ACTIVE_PAID = null (unlimited)
+
       updatedOrg = await prisma.organization.update({
         where: { id: orgId },
-        data: { planType },
+        data: { planType, subscriptionEndDate: newEndDate },
       });
     } else if (action === "extend") {
       const { days, endDate } = body;
