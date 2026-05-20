@@ -34,7 +34,16 @@ export async function GET(req: NextRequest) {
       where: { userId: user.id },
       include: {
         organization: {
-          select: { id: true, name: true, slug: true, logoUrl: true, timezone: true },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+            timezone: true,
+            status: true,
+            planType: true,
+            subscriptionEndDate: true,
+          },
         },
       },
       orderBy: { joinedAt: "asc" },

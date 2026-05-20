@@ -286,32 +286,32 @@ export default function DashboardPage() {
           {/* Title & Description */}
           <div className="space-y-3">
             <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
-              {isBlocked ? "आपली संस्था निलंबित करण्यात आली आहे" : "सबस्क्रिप्शन कालावधी संपला आहे"}
+              {isBlocked ? "Organization Account Suspended" : "Subscription Plan Expired"}
             </h1>
             <p className="text-gray-600 text-sm md:text-base leading-relaxed">
               {isBlocked 
-                ? "सुरक्षा किंवा पेमेंट संदर्भातील कारणांमुळे आपल्या संस्थेचे खाते ब्लॉक करण्यात आले आहे. कृपया या समस्येचे लवकरात लवकर निवारण करण्यासाठी आमच्या सपोर्ट टीमशी संपर्क साधा."
-                : "आपल्या कॉललॉग SaaS चा विनामूल्य ट्रायल कालावधी किंवा सबस्क्रिप्शन पूर्ण झाले आहे. पुढील सेवा सुरू ठेवण्यासाठी कृपया प्लॅन नूतनीकरण करा किंवा ॲडमिनशी संपर्क साधा."
+                ? "Your organization account has been suspended due to payment or security issues. Please contact our support team to resolve this as soon as possible."
+                : "Your CallLog SaaS free trial or subscription has expired. Please renew your plan or contact your administrator to continue using the service."
               }
             </p>
           </div>
 
-          {/* Core Premium Features Reminder to Entice Them */}
+          {/* Core Premium Features Reminder */}
           {!isBlocked && (
             <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 text-left space-y-3">
-              <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">💎 Enterprise प्रिमियम फीचर्स:</p>
+              <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide">💎 Enterprise Premium Features:</p>
               <ul className="text-xs text-gray-700 space-y-2">
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span> <strong>अमर्यादित कर्मचारी आणि सिम कार्ड</strong>
+                  <span className="text-emerald-500">✓</span> <strong>Unlimited employees and SIM cards</strong>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span> <strong>अमर्यादित कॉल्स सिंक + अनालिटिक्स इतिहास</strong>
+                  <span className="text-emerald-500">✓</span> <strong>Unlimited call sync + analytics history</strong>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span> <strong>कॉल लॉग्ज Excel (.xlsx), CSV आणि PDF मध्ये डाऊनलोड करा</strong>
+                  <span className="text-emerald-500">✓</span> <strong>Download call logs in Excel (.xlsx), CSV and PDF</strong>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span> <strong>दैनिक रिपोर्ट आणि २४/७ प्रायोरिटी सपोर्ट</strong>
+                  <span className="text-emerald-500">✓</span> <strong>Daily reports and 24/7 priority support</strong>
                 </li>
               </ul>
             </div>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
                   : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/10"
               }`}
             >
-              {isBlocked ? "सपोर्ट टीमशी संपर्क साधा" : "प्लॅन नूतनीकरण करा / सपोर्ट संपर्क"}
+              {isBlocked ? "Contact Support" : "Renew Plan / Contact Support"}
             </a>
           </div>
         </div>
