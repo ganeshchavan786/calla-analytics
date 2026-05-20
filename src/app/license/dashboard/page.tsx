@@ -8,7 +8,7 @@ import {
   Shield, Users, Building2, Phone, LogOut,
   Settings, Mail, RefreshCw, CheckCircle,
   XCircle, Clock, Search, Send, Play, Server,
-  CreditCard, Eye, EyeOff, ExternalLink,
+  CreditCard, Eye, EyeOff, ExternalLink, IndianRupee, ArrowUpRight, TrendingUp,
 } from "lucide-react";
 
 // =============================================================
@@ -74,7 +74,27 @@ interface Organization {
   };
 }
 
-type Tab = "dashboard" | "smtp" | "organizations" | "users" | "cron" | "payment";
+type Tab = "dashboard" | "smtp" | "organizations" | "users" | "cron" | "payment" | "revenue";
+
+interface RevenueData {
+  totalRevenue: number;
+  thisMonthRevenue: number;
+  transactions: {
+    id: string;
+    organizationId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    type: string;
+    createdAt: string;
+    organization: {
+      name: string;
+      planType: string;
+    };
+  }[];
+}
 
 // =============================================================
 // MAIN COMPONENT
@@ -160,6 +180,10 @@ export default function LicenseDashboard() {
   const [extendModalOrg, setExtendModalOrg] = useState<{ id: string; name: string; endDate: string | null } | null>(null);
   const [customDays, setCustomDays] = useState<number>(30);
 
+  // Revenue
+  const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+
   // =============================================================
   // FETCH FUNCTIONS
   // =============================================================
@@ -229,9 +253,25 @@ export default function LicenseDashboard() {
     }
   }, [orgFilter, orgSearch]);
 
+  const fetchRevenue = useCallback(async () => {
+    setRevenueLoading(true);
+    try {
+      const res = await fetch("/api/license/transactions");
+      const data = await res.json();
+      if (data.success) {
+        setRevenueData(data.data);
+      }
+    } catch (err) {
+      console.error("Failed fetching revenue:", err);
+    } finally {
+      setRevenueLoading(false);
+    }
+  }, []);
+
   useEffect(() => { fetchAdmin(); fetchDashboardData(); }, []);
   useEffect(() => { if (activeTab === "users") fetchAllUsers(); }, [activeTab, userFilter, userSearch]);
   useEffect(() => { if (activeTab === "organizations") fetchOrganizations(); }, [activeTab, orgFilter, orgSearch, fetchOrganizations]);
+  useEffect(() => { if (activeTab === "revenue") fetchRevenue(); }, [activeTab, fetchRevenue]);
 
   // =============================================================
   // HANDLERS
@@ -377,6 +417,7 @@ export default function LicenseDashboard() {
     { tab: "users", label: "Users", icon: Users },
     { tab: "smtp", label: "SMTP Settings", icon: Mail },
     { tab: "payment", label: "Payment Gateway", icon: CreditCard },
+    { tab: "revenue", label: "Revenue", icon: IndianRupee },
     { tab: "cron", label: "Cron Jobs", icon: Clock },
   ];
 
@@ -1596,6 +1637,118 @@ export default function LicenseDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ========== REVENUE TAB ========== */}
+        {activeTab === "revenue" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div>
+              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 tracking-tight">Revenue & Transactions</h1>
+              <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">Overview of all payments and earnings</p>
+            </div>
+
+            {revenueLoading ? (
+              <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+            ) : revenueData && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Total Revenue */}
+                  <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="flex justify-between items-start relative z-10">
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">Total Revenue</p>
+                        <h3 className="text-4xl font-black text-slate-900 dark:text-white mt-2">₹{revenueData.totalRevenue.toLocaleString()}</h3>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                        <TrendingUp size={24} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* This Month */}
+                  <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-3xl p-6 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="flex justify-between items-start relative z-10">
+                      <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">This Month</p>
+                        <h3 className="text-4xl font-black text-slate-900 dark:text-white mt-2">₹{revenueData.thisMonthRevenue.toLocaleString()}</h3>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-600">
+                        <ArrowUpRight size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-800/80 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-950/20">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transaction History</h3>
+                    <div className="text-xs font-semibold px-3 py-1 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 rounded-full">
+                      {revenueData.transactions.length} Records
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50/50 dark:bg-zinc-950/20 text-slate-500 dark:text-zinc-500 text-xs uppercase tracking-wider">
+                        <tr>
+                          <th className="px-6 py-4 font-bold">Date</th>
+                          <th className="px-6 py-4 font-bold">Organization</th>
+                          <th className="px-6 py-4 font-bold">Type</th>
+                          <th className="px-6 py-4 font-bold">Status</th>
+                          <th className="px-6 py-4 font-bold text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
+                        {revenueData.transactions.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="text-slate-900 dark:text-zinc-200 font-medium">{new Date(tx.createdAt).toLocaleDateString()}</div>
+                              <div className="text-xs text-slate-500 dark:text-zinc-500">{new Date(tx.createdAt).toLocaleTimeString()}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-slate-900 dark:text-zinc-200 font-bold">{tx.organization.name}</div>
+                              <div className="text-xs text-slate-500 dark:text-zinc-500">{tx.organization.planType}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-md">
+                                {tx.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {tx.status === "SUCCESS" ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-md">
+                                  <CheckCircle size={12} /> SUCCESS
+                                </span>
+                              ) : tx.status === "PENDING" ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-md">
+                                  <Clock size={12} /> PENDING
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-md">
+                                  <XCircle size={12} /> FAILED
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right font-black text-slate-900 dark:text-white">
+                              ₹{tx.amount.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                        {revenueData.transactions.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-zinc-500">
+                              No transactions found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
