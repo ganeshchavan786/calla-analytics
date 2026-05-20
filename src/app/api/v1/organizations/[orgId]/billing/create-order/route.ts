@@ -30,11 +30,12 @@ export const POST = withAuth(async (req, ctx) => {
       return apiError("PAYMENT_DISABLED", "Payment gateway is not configured or disabled", 400);
     }
 
+    const keyId = decrypt(license.razorpayKeyId);
     const keySecret = decrypt(license.razorpayKeySecret);
 
     // 2. Initialize Razorpay
     const razorpay = new Razorpay({
-      key_id: license.razorpayKeyId,
+      key_id: keyId,
       key_secret: keySecret,
     });
 
@@ -63,7 +64,7 @@ export const POST = withAuth(async (req, ctx) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: license.razorpayKeyId,
+      keyId: keyId,
     });
   } catch (error: any) {
     console.error("Razorpay Create Order Error:", error);
