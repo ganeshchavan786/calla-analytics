@@ -1,7 +1,8 @@
 "use client";
 // src/app/settings/members/page.tsx
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import Script from "next/script";
 import { Users, Mail, Plus, Trash2, Shield } from "lucide-react";
 
 interface SIM {
@@ -68,6 +69,80 @@ export default function MembersPage() {
     setInviting(true);
 
     try {
+      // 1. Fetch Pro-Rata Cost
+      const proRataRes = await fetch(`/api/v1/organizations/${orgId}/billing/pro-rata`);
+      const proRata = await proRataRes.json();
+      
+      if (!proRata.success) {
+        throw new Error(proRata.message || "Failed to calculate invite cost");
+      }
+
+      const amount = proRata.data.amount;
+
+      // 2. If amount > 0, do Razorpay Checkout first
+      if (amount > 0) {
+        const orderRes = await fetch(`/api/v1/organizations/${orgId}/billing/create-order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memberCount: 1, amount }),
+        });
+        const orderData = await orderRes.json();
+
+        if (!orderData.success) {
+          throw new Error(orderData.message || "Failed to create order");
+        }
+
+        const options = {
+          key: orderData.data.keyId,
+          amount: orderData.data.amount,
+          currency: orderData.data.currency,
+          name: "CallLog SaaS",
+          description: "Pro-Rata Member Invite",
+          order_id: orderData.data.orderId,
+          handler: async function (response: any) {
+            try {
+              const verifyRes = await fetch(`/api/v1/organizations/${orgId}/billing/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  planMonths: 0,
+                }),
+              });
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                await executeInvite();
+              } else {
+                setInviteError(verifyData.message || "Payment verification failed");
+                setInviting(false);
+              }
+            } catch (e: any) {
+              setInviteError(e.message || "Error verifying payment");
+              setInviting(false);
+            }
+          },
+          theme: { color: "#2563eb" },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+          setInviteError(`Payment Failed: ${response.error.description}`);
+          setInviting(false);
+        });
+        rzp.open();
+      } else {
+        await executeInvite();
+      }
+    } catch (err: any) {
+      setInviteError(err.message || "Something went wrong.");
+      setInviting(false);
+    }
+  }
+
+  async function executeInvite() {
+    try {
       const res = await fetch(`/api/v1/organizations/${orgId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,9 +153,12 @@ export default function MembersPage() {
       if (data.success) {
         setInviteSuccess(`Invitation sent to ${invite.email}`);
         setInvite({ email: "", role: "MEMBER" });
+        fetchMembers();
       } else {
         setInviteError(data.message || "Failed to send invitation");
       }
+    } catch (err: any) {
+      setInviteError("Failed to execute invite");
     } finally {
       setInviting(false);
     }
@@ -104,8 +182,10 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      {/* Header */}
+    <div className="w-full">
+      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" />
+      <div className="max-w-3xl space-y-6">
+        {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Team Members</h1>
@@ -285,6 +365,7 @@ export default function MembersPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

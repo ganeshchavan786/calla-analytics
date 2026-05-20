@@ -192,6 +192,33 @@ export class OrganizationService {
     email: string,
     role = "MEMBER"
   ) {
+    // 1. Enforce Member Limits
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { planType: true, name: true },
+    });
+    
+    if (!org) throw new Error("Organization not found");
+
+    const memberCount = await prisma.organizationMember.count({
+      where: { organizationId },
+    });
+    
+    const pendingInvites = await prisma.invite.count({
+      where: { organizationId, acceptedAt: null, expiresAt: { gt: new Date() } },
+    });
+
+    const totalCount = memberCount + pendingInvites;
+
+    if (org.planType === "FREE_TRIAL" && totalCount >= 3) {
+      throw new Error("Free Trial limit reached (Max 3 members). Please upgrade to a paid plan.");
+    }
+    
+    if (org.planType === "ACTIVE_PAID" && totalCount >= 10) {
+      throw new Error("Monthly plan limit reached (Max 10 members). Please upgrade to Enterprise.");
+    }
+
+    // 2. Check if user exists and is already a member
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       const existing = await prisma.organizationMember.findUnique({
@@ -227,10 +254,6 @@ export class OrganizationService {
     // Send invitation email (fire and forget — never block invite creation)
     const inviter = await prisma.user.findUnique({
       where: { id: inviterUserId },
-      select: { name: true },
-    });
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
       select: { name: true },
     });
 
