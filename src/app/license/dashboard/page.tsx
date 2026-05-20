@@ -120,9 +120,21 @@ export default function LicenseDashboard() {
   const [orgSearch, setOrgSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState("all");
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
-  const [orgModalTab, setOrgModalTab] = useState<"info" | "members">("info");
   const [orgMemberSearch, setOrgMemberSearch] = useState("");
   const [orgsLoading, setOrgsLoading] = useState(false);
+
+  // Confirmation dialog
+  const [confirmAction, setConfirmAction] = useState<{
+    orgId: string;
+    orgName: string;
+    action: string;
+    payload?: any;
+    title: string;
+    message: string;
+    icon: string;
+    confirmLabel: string;
+    confirmClass: string;
+  } | null>(null);
 
   // Cron jobs
   const [cronJobs, setCronJobs] = useState<any[]>([]);
@@ -267,6 +279,7 @@ export default function LicenseDashboard() {
   }
 
   async function handleOrgAction(orgId: string, action: string, payload?: any) {
+    setConfirmAction(null);
     setSubmittingOrgId(orgId);
     try {
       const res = await fetch(`/api/license/organizations/${orgId}`, {
@@ -279,8 +292,6 @@ export default function LicenseDashboard() {
         fetchAllUsers();
         fetchOrganizations();
         if (extendModalOrg) setExtendModalOrg(null);
-        
-        // Also update selectedOrg modal state if it's currently open
         setSelectedOrg(prev => {
           if (!prev || prev.id !== orgId) return prev;
           if (action === "block") return { ...prev, status: "BLOCKED" };
@@ -302,6 +313,43 @@ export default function LicenseDashboard() {
     } finally {
       setSubmittingOrgId(null);
     }
+  }
+
+  function triggerConfirm(org: Organization, action: string, payload?: any) {
+    const configs: Record<string, { title: string; message: string; icon: string; confirmLabel: string; confirmClass: string }> = {
+      block: {
+        title: "Block Organization",
+        message: `All members of "${org.name}" will immediately lose access to the platform. Their data will be preserved and access can be restored at any time.`,
+        icon: "🔒",
+        confirmLabel: "Block Access",
+        confirmClass: "bg-rose-600 hover:bg-rose-700 text-white",
+      },
+      unblock: {
+        title: "Restore Organization Access",
+        message: `"${org.name}" will regain full access to the platform. All members will be able to log in and use their accounts immediately.`,
+        icon: "✅",
+        confirmLabel: "Restore Access",
+        confirmClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
+      },
+      changePlan_ACTIVE_PAID: {
+        title: "Activate Paid Subscription",
+        message: `"${org.name}" will be upgraded to Enterprise Paid plan. Please ensure payment has been confirmed before proceeding with this activation.`,
+        icon: "👑",
+        confirmLabel: "Activate Enterprise",
+        confirmClass: "bg-amber-500 hover:bg-amber-600 text-white",
+      },
+      changePlan_FREE_TRIAL: {
+        title: "Downgrade to Free Trial",
+        message: `"${org.name}" will be downgraded to the 7-Day Free Trial plan. Enterprise features will be disabled for all members.`,
+        icon: "⬇️",
+        confirmLabel: "Confirm Downgrade",
+        confirmClass: "bg-slate-600 hover:bg-slate-700 text-white",
+      },
+    };
+    const key = action === "changePlan" ? `changePlan_${payload?.planType}` : action;
+    const config = configs[key];
+    if (!config) { handleOrgAction(org.id, action, payload); return; }
+    setConfirmAction({ orgId: org.id, orgName: org.name, action, payload, ...config });
   }
 
   // =============================================================
@@ -1088,7 +1136,7 @@ export default function LicenseDashboard() {
                       ];
 
                       return (
-                        <tr key={org.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors duration-200">
+                        <tr key={org.id} onClick={() => { setSelectedOrg(org); setOrgMemberSearch(""); }} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors duration-200 cursor-pointer">
                           {/* Organization Name & Slug */}
                           <td className="px-6 py-4.5 whitespace-nowrap">
                             <div className="flex items-center gap-3">
@@ -1181,65 +1229,53 @@ export default function LicenseDashboard() {
                           </td>
 
                           {/* Action Buttons */}
-                          <td className="px-6 py-4.5 whitespace-nowrap">
+                          <td className="px-6 py-4.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-2 text-xs">
-                              {/* Open interactive modal */}
-                              <button
-                                onClick={() => {
-                                  setSelectedOrg(org);
-                                  setOrgModalTab("info");
-                                  setOrgMemberSearch("");
-                                }}
-                                className="px-2.5 py-1.5 bg-indigo-650 dark:bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 text-white rounded-xl transition-all duration-200 font-bold hover:scale-105"
-                              >
-                                Details
-                              </button>
-
                               {/* Toggle block/unblock */}
                               {org.status === "ACTIVE" ? (
                                 <button
-                                  onClick={() => handleOrgAction(org.id, "block")}
+                                  onClick={() => triggerConfirm(org, "block")}
                                   disabled={submittingOrgId === org.id}
-                                  className="px-2.5 py-1.5 bg-rose-50 dark:bg-rose-500/5 hover:bg-rose-100 dark:hover:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:border-rose-450 dark:hover:border-rose-500/40 text-rose-600 dark:text-rose-450 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 hover:scale-105"
+                                  className="px-2.5 py-1.5 bg-rose-50 dark:bg-rose-500/5 hover:bg-rose-100 dark:hover:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-450 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 hover:scale-105"
                                 >
                                   Block
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => handleOrgAction(org.id, "unblock")}
+                                  onClick={() => triggerConfirm(org, "unblock")}
                                   disabled={submittingOrgId === org.id}
-                                  className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-500/5 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 hover:border-emerald-450 dark:hover:border-emerald-500/40 text-emerald-650 dark:text-emerald-405 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 hover:scale-105"
+                                  className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-500/5 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-405 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 hover:scale-105"
                                 >
                                   Unblock
                                 </button>
                               )}
 
-                              {/* Upgrade/Downgrade Plan Type */}
+                              {/* Activate / Downgrade */}
                               {org.planType === "FREE_TRIAL" ? (
                                 <button
-                                  onClick={() => handleOrgAction(org.id, "changePlan", { planType: "ACTIVE_PAID" })}
+                                  onClick={() => triggerConfirm(org, "changePlan", { planType: "ACTIVE_PAID" })}
                                   disabled={submittingOrgId === org.id}
-                                  className="px-2.5 py-1.5 bg-amber-50 dark:bg-amber-500/5 hover:bg-amber-100 dark:hover:bg-amber-500/10 border border-amber-205 dark:border-amber-500/25 hover:border-amber-450 dark:hover:border-amber-500/40 text-amber-705 dark:text-amber-405 rounded-xl transition-all duration-200 font-extrabold disabled:opacity-50 hover:scale-105"
+                                  className="px-2.5 py-1.5 bg-amber-50 dark:bg-amber-500/5 hover:bg-amber-100 dark:hover:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-400 rounded-xl transition-all duration-200 font-extrabold disabled:opacity-50 hover:scale-105"
                                 >
                                   Activate
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => handleOrgAction(org.id, "changePlan", { planType: "FREE_TRIAL" })}
+                                  onClick={() => triggerConfirm(org, "changePlan", { planType: "FREE_TRIAL" })}
                                   disabled={submittingOrgId === org.id}
-                                  className="px-2.5 py-1.5 bg-slate-105 dark:bg-zinc-800/30 hover:bg-slate-200 dark:hover:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/40 text-slate-655 dark:text-zinc-300 rounded-xl transition-all duration-200 font-semibold disabled:opacity-50 hover:scale-105"
+                                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-zinc-800/30 hover:bg-slate-200 dark:hover:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/40 text-slate-600 dark:text-zinc-300 rounded-xl transition-all duration-200 font-semibold disabled:opacity-50 hover:scale-105"
                                 >
                                   Downgrade
                                 </button>
                               )}
 
-                              {/* Extend Sub duration */}
+                              {/* Extend */}
                               <button
                                 onClick={() => {
                                   setExtendModalOrg({ id: org.id, name: org.name, endDate: org.subscriptionEndDate });
                                   setCustomDays(30);
                                 }}
-                                className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/5 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/25 hover:border-indigo-455 dark:hover:border-indigo-500/45 text-indigo-650 dark:text-indigo-400 rounded-xl transition-all duration-200 font-bold hover:scale-105"
+                                className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/5 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/25 text-indigo-650 dark:text-indigo-400 rounded-xl transition-all duration-200 font-bold hover:scale-105"
                               >
                                 Extend
                               </button>
@@ -1355,268 +1391,221 @@ export default function LicenseDashboard() {
 
       </main>
 
-      {/* ── Organization Details Modal ── */}
+      {/* ── Organization Members Modal ── */}
       {selectedOrg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-zinc-950/70 backdrop-blur-xl p-4 animate-fade-in">
-          <div className="relative bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800/80 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            
-            {/* Subtle glow effect behind modal */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-zinc-950/70 backdrop-blur-xl p-4 animate-fade-in" onClick={() => setSelectedOrg(null)}>
+          <div className="relative bg-white dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800/80 rounded-3xl p-6 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
+
+            {/* Glow */}
             <div className="absolute -top-16 -left-16 w-36 h-36 bg-indigo-500/10 rounded-full blur-[60px] pointer-events-none" />
 
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🏢</span>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {selectedOrg.name}
-                  </h3>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-purple-500/5 dark:from-indigo-500/20 dark:to-purple-500/10 border border-indigo-100 dark:border-indigo-500/25 flex items-center justify-center">
+                  <Building2 size={18} className="text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 font-mono">
-                  ID: {selectedOrg.id} &bull; Slug: /{selectedOrg.slug}
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{selectedOrg.name}</h3>
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono">/{selectedOrg.slug}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedOrg(null)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 flex items-center justify-center text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-100 transition-colors text-sm font-bold">✕</button>
+            </div>
+
+            {/* Org Info Strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-xl px-3 py-2">
+                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Plan</p>
+                {selectedOrg.planType === "FREE_TRIAL" ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-violet-600 dark:text-violet-400 font-bold mt-0.5">⏳ Free Trial</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">👑 Enterprise</span>
+                )}
+              </div>
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-xl px-3 py-2">
+                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Status</p>
+                {selectedOrg.status === "ACTIVE" ? (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Active</span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />Blocked</span>
+                )}
+              </div>
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-xl px-3 py-2">
+                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Start Date</p>
+                <p className="text-[10px] text-slate-700 dark:text-zinc-300 font-bold mt-0.5">{new Date(selectedOrg.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-xl px-3 py-2">
+                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">End Date</p>
+                <p className="text-[10px] font-bold mt-0.5">
+                  {selectedOrg.subscriptionEndDate ? (
+                    <span className={new Date(selectedOrg.subscriptionEndDate) < new Date() ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
+                      {new Date(selectedOrg.subscriptionEndDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 dark:text-zinc-400">Unlimited</span>
+                  )}
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedOrg(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 flex items-center justify-center text-slate-555 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-100 transition-colors font-bold"
-              >
-                ✕
-              </button>
             </div>
 
-            {/* Modal Tabs Selector */}
-            <div className="flex border-b border-slate-200 dark:border-zinc-800/60">
-              <button
-                onClick={() => setOrgModalTab("info")}
-                className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 ${
-                  orgModalTab === "info"
-                    ? "border-indigo-655 dark:border-indigo-500 text-indigo-655 dark:text-white"
-                    : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                Overview & Stats
-              </button>
-              <button
-                onClick={() => setOrgModalTab("members")}
-                className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-all duration-200 ${
-                  orgModalTab === "members"
-                    ? "border-indigo-655 dark:border-indigo-500 text-indigo-655 dark:text-white"
-                    : "border-transparent text-slate-505 dark:text-zinc-400 hover:text-slate-805 dark:hover:text-zinc-200"
-                }`}
-              >
-                Organization Members ({selectedOrg.members?.length || 0})
-              </button>
-            </div>
-
-            {/* Modal Body Scroll Area */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-6 min-h-[300px]">
-              {orgModalTab === "info" ? (
-                <div className="space-y-6 animate-fade-in">
-                  {/* Detailed Organization Stats Cards */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-2xl p-4 text-center">
-                      <p className="text-2xl font-black text-indigo-655 dark:text-indigo-405">
-                        {selectedOrg._count?.members || 0}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-zinc-550 font-bold uppercase tracking-wider mt-1">Total Members</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-2xl p-4 text-center">
-                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-450">
-                        {selectedOrg._count?.registeredSIMs || 0}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-zinc-555 font-bold uppercase tracking-wider mt-1">Active SIMs</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-2xl p-4 text-center">
-                      <p className="text-2xl font-black text-amber-605 dark:text-amber-400">
-                        {selectedOrg._count?.callLogs || 0}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-zinc-555 font-bold uppercase tracking-wider mt-1">Synced Logs</p>
-                    </div>
-                  </div>
-
-                  {/* General Info Form/Fields */}
-                  <div className="bg-slate-50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-805/50 rounded-2xl p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Subscription Plan</span>
-                        <div className="mt-1">
-                          {selectedOrg.planType === "FREE_TRIAL" ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs bg-violet-500/10 text-violet-655 dark:text-violet-400 border border-violet-100 dark:border-violet-500/25 px-2.5 py-1 rounded-full font-bold">
-                              ⏳ Free Trial
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-705 dark:text-amber-400 border border-amber-100 dark:border-amber-500/25 px-2.5 py-1 rounded-full font-extrabold">
-                              👑 Enterprise Paid
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Status</span>
-                        <div className="mt-1">
-                          {selectedOrg.status === "ACTIVE" ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 dark:bg-emerald-500/10 text-emerald-655 dark:text-emerald-405 border border-emerald-100 dark:border-emerald-500/20 px-2.5 py-1 rounded-full font-semibold">
-                              Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs bg-rose-50 dark:bg-rose-500/10 text-rose-655 dark:text-rose-405 border border-rose-100 dark:border-rose-500/20 px-2.5 py-1 rounded-full font-semibold">
-                              Blocked
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Timezone</span>
-                        <p className="mt-1 text-slate-800 dark:text-zinc-200 font-semibold">{selectedOrg.timezone}</p>
-                      </div>
-
-                      <div>
-                        <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Created On</span>
-                        <p className="mt-1 text-slate-800 dark:text-zinc-200 font-semibold">
-                          {new Date(selectedOrg.createdAt).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric"
-                          })}
-                        </p>
-                      </div>
-
-                      <div className="col-span-2">
-                        <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Subscription Expiration</span>
-                        <p className="mt-1 text-slate-800 dark:text-zinc-200 font-semibold flex items-center gap-2">
-                          {selectedOrg.subscriptionEndDate ? (
-                            <>
-                              <span>📅 {new Date(selectedOrg.subscriptionEndDate).toLocaleString("en-IN")}</span>
-                              {new Date(selectedOrg.subscriptionEndDate) < new Date() ? (
-                                <span className="text-rose-600 dark:text-rose-400 text-xs font-bold">(Expired)</span>
-                              ) : (
-                                <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                                  ({Math.ceil((new Date(selectedOrg.subscriptionEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left)
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            "Unlimited / Perpetual"
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions for super admin */}
-                  <div className="space-y-3">
-                    <span className="block text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Administrative Commands</span>
-                    <div className="flex flex-wrap gap-3">
-                      {selectedOrg.status === "ACTIVE" ? (
-                        <button
-                          onClick={() => handleOrgAction(selectedOrg.id, "block")}
-                          disabled={submittingOrgId === selectedOrg.id}
-                          className="px-4 py-2 bg-rose-50 dark:bg-rose-500/5 hover:bg-rose-100 dark:hover:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:border-rose-450 dark:hover:border-rose-500/40 text-rose-600 dark:text-rose-405 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 text-xs hover:scale-105"
-                        >
-                          Block Organization
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleOrgAction(selectedOrg.id, "unblock")}
-                          disabled={submittingOrgId === selectedOrg.id}
-                          className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/5 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 hover:border-emerald-450 dark:hover:border-emerald-500/40 text-emerald-600 dark:text-emerald-405 rounded-xl transition-all duration-200 font-bold disabled:opacity-50 text-xs hover:scale-105"
-                        >
-                          Unblock Organization
-                        </button>
-                      )}
-
-                      {selectedOrg.planType === "FREE_TRIAL" ? (
-                        <button
-                          onClick={() => handleOrgAction(selectedOrg.id, "changePlan", { planType: "ACTIVE_PAID" })}
-                          disabled={submittingOrgId === selectedOrg.id}
-                          className="px-4 py-2 bg-amber-50 dark:bg-amber-500/5 hover:bg-amber-100 dark:hover:bg-amber-500/10 border border-amber-205 dark:border-amber-500/25 hover:border-amber-450 dark:hover:border-amber-500/40 text-amber-705 dark:text-amber-400 rounded-xl transition-all duration-200 font-extrabold disabled:opacity-50 text-xs hover:scale-105"
-                        >
-                          Activate Paid Subscription
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleOrgAction(selectedOrg.id, "changePlan", { planType: "FREE_TRIAL" })}
-                          disabled={submittingOrgId === selectedOrg.id}
-                          className="px-4 py-2 bg-slate-105 dark:bg-zinc-800/30 hover:bg-slate-200 dark:hover:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/40 text-slate-655 dark:text-zinc-300 rounded-xl transition-all duration-200 font-semibold disabled:opacity-50 text-xs hover:scale-105"
-                        >
-                          Downgrade to Trial
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          setExtendModalOrg({ id: selectedOrg.id, name: selectedOrg.name, endDate: selectedOrg.subscriptionEndDate });
-                          setCustomDays(30);
-                        }}
-                        className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/5 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/25 hover:border-indigo-455 dark:hover:border-indigo-500/45 text-indigo-650 dark:text-indigo-400 rounded-xl transition-all duration-200 font-bold text-xs hover:scale-105"
-                      >
-                        Extend Expiration
-                      </button>
-                    </div>
-                  </div>
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[
+                { label: "Members", value: selectedOrg._count?.members || 0, color: "text-indigo-600 dark:text-indigo-400" },
+                { label: "Active SIMs", value: selectedOrg._count?.registeredSIMs || 0, color: "text-emerald-600 dark:text-emerald-400" },
+                { label: "Synced Logs", value: selectedOrg._count?.callLogs || 0, color: "text-amber-600 dark:text-amber-400" },
+              ].map(s => (
+                <div key={s.label} className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-xl p-3 text-center">
+                  <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
+                  <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider mt-0.5">{s.label}</p>
                 </div>
+              ))}
+            </div>
+
+            {/* Members Section */}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-wider">Members ({selectedOrg.members?.length || 0})</p>
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" />
+                <input
+                  type="text"
+                  value={orgMemberSearch}
+                  onChange={e => setOrgMemberSearch(e.target.value)}
+                  placeholder="Search member..."
+                  className="pl-7 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800/80 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400 dark:placeholder-zinc-600 w-44 shadow-inner"
+                />
+              </div>
+            </div>
+
+            {/* Members List */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 min-h-[120px] pr-1">
+              {(selectedOrg.members?.filter(m =>
+                m.user.name.toLowerCase().includes(orgMemberSearch.toLowerCase()) ||
+                m.user.email.toLowerCase().includes(orgMemberSearch.toLowerCase())
+              ) ?? []).length === 0 ? (
+                <p className="text-center py-8 text-slate-400 dark:text-zinc-600 text-xs font-semibold">No members found.</p>
               ) : (
-                <div className="space-y-4 animate-fade-in flex flex-col h-full">
-                  {/* Member Search input */}
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-405 dark:text-zinc-550" />
-                    <input
-                      type="text"
-                      value={orgMemberSearch}
-                      onChange={e => setOrgMemberSearch(e.target.value)}
-                      placeholder="Search member by name or email..."
-                      className="w-full pl-9 pr-4 py-2 bg-slate-55 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800/80 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400 dark:placeholder-zinc-600 transition-all shadow-inner"
-                    />
-                  </div>
-
-                  {/* Members list */}
-                  <div className="divide-y divide-slate-100 dark:divide-zinc-800/50 max-h-[300px] overflow-y-auto">
-                    {selectedOrg.members?.filter(m =>
-                      m.user.name.toLowerCase().includes(orgMemberSearch.toLowerCase()) ||
-                      m.user.email.toLowerCase().includes(orgMemberSearch.toLowerCase())
-                    ).length === 0 ? (
-                      <p className="text-center py-8 text-slate-405 dark:text-zinc-600 text-xs font-semibold">
-                        No members matching your search query.
-                      </p>
-                    ) : (
-                      selectedOrg.members?.filter(m =>
-                        m.user.name.toLowerCase().includes(orgMemberSearch.toLowerCase()) ||
-                        m.user.email.toLowerCase().includes(orgMemberSearch.toLowerCase())
-                      ).map(member => (
-                        <div key={member.id} className="py-3 flex items-center justify-between hover:bg-slate-50/40 dark:hover:bg-zinc-900/10 px-2 rounded-xl transition-all">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50/60 dark:bg-indigo-500/10 border border-indigo-100/50 dark:border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-650 dark:text-indigo-400 shadow-sm">
-                              {member.user.name ? member.user.name[0].toUpperCase() : "U"}
-                            </div>
-                            <div>
-                              <p className="text-slate-905 dark:text-white font-semibold text-xs">{member.user.name}</p>
-                              <p className="text-slate-500 dark:text-zinc-500 text-[10px]">{member.user.email}</p>
-                            </div>
-                          </div>
-                          <div className="text-right text-xs">
-                            <span className="font-semibold text-slate-705 dark:text-zinc-350 bg-slate-50 dark:bg-zinc-950/40 border border-slate-205 dark:border-zinc-800/60 rounded px-2 py-0.5 text-[9px] uppercase tracking-wider">
-                              {member.role}
-                            </span>
-                            <p className="text-[10px] text-slate-400 dark:text-zinc-555 mt-1">
-                              Joined {new Date(member.joinedAt).toLocaleDateString("en-IN")}
-                            </p>
-                          </div>
+                selectedOrg.members?.filter(m =>
+                  m.user.name.toLowerCase().includes(orgMemberSearch.toLowerCase()) ||
+                  m.user.email.toLowerCase().includes(orgMemberSearch.toLowerCase())
+                ).map(member => {
+                  const roleBadge: Record<string, string> = {
+                    OWNER: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30",
+                    ADMIN: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30",
+                    MEMBER: "bg-slate-50 dark:bg-zinc-800/30 text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-zinc-700/50",
+                  };
+                  return (
+                    <div key={member.id} className="flex items-center justify-between bg-slate-50/60 dark:bg-zinc-950/20 border border-slate-100 dark:border-zinc-800/40 rounded-xl px-3 py-2.5 hover:bg-slate-100/60 dark:hover:bg-zinc-800/30 transition-all">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500/10 to-purple-500/5 dark:from-indigo-500/20 dark:to-purple-500/10 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                          {member.user.name ? member.user.name[0].toUpperCase() : "U"}
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                        <div>
+                          <p className="text-slate-900 dark:text-white font-semibold text-xs">{member.user.name}</p>
+                          <p className="text-slate-500 dark:text-zinc-500 text-[10px]">{member.user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-right shrink-0">
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase tracking-wider font-bold">Start</p>
+                          <p className="text-[10px] text-slate-700 dark:text-zinc-300 font-semibold">{new Date(member.joinedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase tracking-wider font-bold">End</p>
+                          <p className="text-[10px] font-semibold">
+                            {selectedOrg.subscriptionEndDate
+                              ? <span className={new Date(selectedOrg.subscriptionEndDate) < new Date() ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400"}>{new Date(selectedOrg.subscriptionEndDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                              : <span className="text-slate-400 dark:text-zinc-500">∞</span>
+                            }
+                          </p>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wider ${roleBadge[member.role] || roleBadge.MEMBER}`}>{member.role}</span>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            <div className="pt-4 border-t border-slate-200 dark:border-zinc-800/80 flex justify-end">
+            {/* Administrative Actions Footer */}
+            <div className="pt-4 mt-2 border-t border-slate-200 dark:border-zinc-800/80">
+              <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider mb-2">Administrative Commands</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedOrg.status === "ACTIVE" ? (
+                  <button onClick={() => triggerConfirm(selectedOrg, "block")} disabled={submittingOrgId === selectedOrg.id}
+                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-500/5 hover:bg-rose-100 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition-all disabled:opacity-50 hover:scale-105">
+                    🔒 Block Organization
+                  </button>
+                ) : (
+                  <button onClick={() => triggerConfirm(selectedOrg, "unblock")} disabled={submittingOrgId === selectedOrg.id}
+                    className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/5 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold transition-all disabled:opacity-50 hover:scale-105">
+                    ✅ Restore Access
+                  </button>
+                )}
+                {selectedOrg.planType === "FREE_TRIAL" ? (
+                  <button onClick={() => triggerConfirm(selectedOrg, "changePlan", { planType: "ACTIVE_PAID" })} disabled={submittingOrgId === selectedOrg.id}
+                    className="px-3 py-1.5 bg-amber-50 dark:bg-amber-500/5 hover:bg-amber-100 border border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-extrabold transition-all disabled:opacity-50 hover:scale-105">
+                    👑 Activate Enterprise
+                  </button>
+                ) : (
+                  <button onClick={() => triggerConfirm(selectedOrg, "changePlan", { planType: "FREE_TRIAL" })} disabled={submittingOrgId === selectedOrg.id}
+                    className="px-3 py-1.5 bg-slate-100 dark:bg-zinc-800/30 hover:bg-slate-200 border border-slate-200 dark:border-zinc-700/40 text-slate-600 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 hover:scale-105">
+                    ⬇️ Downgrade to Trial
+                  </button>
+                )}
+                <button onClick={() => { setExtendModalOrg({ id: selectedOrg.id, name: selectedOrg.name, endDate: selectedOrg.subscriptionEndDate }); setCustomDays(30); }}
+                  className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/5 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-500/25 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all hover:scale-105">
+                  ⏰ Extend Period
+                </button>
+                <button onClick={() => setSelectedOrg(null)}
+                  className="ml-auto px-3 py-1.5 bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 rounded-xl text-xs font-bold transition-all hover:bg-slate-100 dark:hover:bg-zinc-800/30">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirmation Dialog ── */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 dark:bg-zinc-950/80 backdrop-blur-xl p-4 animate-fade-in">
+          <div className="relative bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-28 h-28 bg-indigo-500/10 rounded-full blur-[50px] pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-2xl shrink-0">
+                {confirmAction.icon}
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">{confirmAction.title}</h3>
+                <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5">{confirmAction.orgName}</p>
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800/60 rounded-2xl p-4">
+              <p className="text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">{confirmAction.message}</p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-xl px-4 py-2.5 flex items-start gap-2">
+              <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Please verify all details before confirming. This action will take effect immediately.</p>
+            </div>
+            <div className="flex gap-3 pt-1">
               <button
-                type="button"
-                onClick={() => setSelectedOrg(null)}
-                className="py-3 px-6 bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 hover:bg-slate-105 dark:hover:bg-zinc-800/30 text-slate-555 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 rounded-2xl text-xs font-bold transition-all duration-200 active:scale-95 shadow-sm"
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 py-3 bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800/40 text-slate-600 dark:text-zinc-400 rounded-2xl text-sm font-bold transition-all active:scale-95"
               >
-                Close Details
+                Cancel
+              </button>
+              <button
+                onClick={() => handleOrgAction(confirmAction.orgId, confirmAction.action, confirmAction.payload)}
+                disabled={submittingOrgId === confirmAction.orgId}
+                className={`flex-1 py-3 rounded-2xl text-sm font-extrabold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md ${confirmAction.confirmClass}`}
+              >
+                {submittingOrgId === confirmAction.orgId ? (
+                  <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Processing...</>
+                ) : (
+                  confirmAction.confirmLabel
+                )}
               </button>
             </div>
           </div>
