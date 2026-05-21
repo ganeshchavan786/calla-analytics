@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
 
       if (data.success) {
         setSent(true);
-        // Dev mode मध्ये token show करा
+        // Show token in dev mode
         if (data.devToken) setDevToken(data.devToken);
       } else {
         setError(data.message || "Request failed");

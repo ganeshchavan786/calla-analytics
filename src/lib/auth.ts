@@ -1,7 +1,7 @@
 // ================================================
 // FILE: src/lib/auth.ts
-// ACTION: EXISTING file पूर्ण replace करा
-// CHANGE: JWT payload मध्ये organizationId + role add केले
+// ACTION: Fully replace EXISTING file
+// CHANGE: Added organizationId + role in JWT payload
 // ================================================
 
 import { SignJWT, jwtVerify } from "jose";
@@ -18,7 +18,7 @@ const COOKIE_NAME = "calllog_session";
 const JWT_EXPIRY = process.env.JWT_EXPIRY || "7d";
 
 // =============================================================
-// JWT PAYLOAD — organizationId + role add केले
+// JWT PAYLOAD — Added organizationId + role
 // =============================================================
 
 export interface ExtendedJwtPayload {

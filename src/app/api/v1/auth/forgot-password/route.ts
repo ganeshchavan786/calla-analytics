@@ -56,13 +56,13 @@ export async function POST(req: NextRequest) {
         await sendForgotPasswordEmail(user.email, user.name, token);
       } catch (err: any) {
         console.error("[Forgot Password Email Failed]", err.message);
-        // Email fail झाला तरी token save आहे
-        // Dev mode मध्ये link console मध्ये दाखवा
+        // Token is saved even if email fails
+        // Show link in console in dev mode
         const appUrl = smtpSettings?.appUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         console.log(`[DEV] Reset link: ${appUrl}/auth/reset-password?token=${token}`);
       }
     } else {
-      // SMTP नाही — console मध्ये दाखवा (dev साठी)
+      // No SMTP — show in console (for dev)
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const resetLink = `${appUrl}/auth/reset-password?token=${token}`;
       console.log(`[DEV - SMTP not configured] Reset link for ${email}: ${resetLink}`);
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ...successResponse,
       smtpConfigured,
-      // Dev mode मध्ये token expose करा
+      // Expose token in dev mode
       ...(process.env.NODE_ENV === "development"
         ? { devToken: token, devNote: "SMTP not configured — use this token directly" }
         : {}),

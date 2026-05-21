@@ -9,7 +9,7 @@ datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 
-  // 🚀 PostgreSQL — Production साठी uncomment करा
+  // 🚀 PostgreSQL — Uncomment for Production
   // provider = "postgresql"
   // url      = env("DATABASE_URL")
 
@@ -66,7 +66,7 @@ model User {
   otpExpiry        DateTime?
 
   // Mobile App Code
-  uniqueCode       String?   @unique  // OWN-4829 या EMP-7341
+  uniqueCode       String?   @unique  // OWN-4829 or EMP-7341
   codeType         String?            // "OWNER" | "EMPLOYEE"
 
   createdAt        DateTime  @default(now())
@@ -400,7 +400,7 @@ model SavedReport {
 }
 
 // =============================================================
-// LICENSE MANAGER MODELS (Isolated — existing models touch नाही)
+// LICENSE MANAGER MODELS (Isolated — existing models are untouched)
 // =============================================================
 
 model SuperAdmin {
@@ -469,7 +469,7 @@ model PaymentTransaction {
 
 // =============================================================
 // USER MODEL ADDITIONS — paste these fields inside User model
-// verificationOtp, otpExpiry fields ADD करा User model मध्ये
+// Add verificationOtp, otpExpiry fields inside the User model
 // =============================================================
 // verificationOtp  String?
 // otpExpiry        DateTime?

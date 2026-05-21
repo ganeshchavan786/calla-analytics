@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const { email, otp } = parsed.data;
 
-    // User शोधा
+    // Find User
     const user = await prisma.user.findUnique({
       where: { email },
       select: {

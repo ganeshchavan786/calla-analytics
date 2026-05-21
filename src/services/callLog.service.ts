@@ -20,10 +20,13 @@ export class CallLogService {
   ) {
     const { tagIds, notes, ...callData } = data;
 
+    const callLogDate = new Date(callData.date);
+    callLogDate.setMilliseconds(0);
+
     const callLog = await prisma.callLog.create({
       data: {
         ...callData,
-        date: new Date(callData.date),
+        date: callLogDate,
         organizationId,
         importedById: userId,
         // Create note inline if provided
@@ -439,8 +442,27 @@ export class CallLogService {
     let successCount = 0;
     let failCount = 0;
 
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const chunk = records.slice(i, i + BATCH_SIZE);
+    // 1. Standardize all incoming dates to seconds precision (reset milliseconds to 0)
+    // This prevents database-specific millisecond rounding/truncation mismatches.
+    const normalizedRecords = records.map((r) => {
+      const d = new Date(r.date);
+      d.setMilliseconds(0);
+      return { ...r, date: d };
+    });
+
+    // 2. In-memory deduplication of the incoming batch to remove any duplicates in the payload itself
+    const uniqueIncoming = [];
+    const seenIncoming = new Set();
+    for (const r of normalizedRecords) {
+      const key = `${r.mobileNumber}_${r.date.getTime()}`;
+      if (!seenIncoming.has(key)) {
+        seenIncoming.add(key);
+        uniqueIncoming.push(r);
+      }
+    }
+
+    for (let i = 0; i < uniqueIncoming.length; i += BATCH_SIZE) {
+      const chunk = uniqueIncoming.slice(i, i + BATCH_SIZE);
       try {
         // Query database to find which of these calls already exist in this organization
         const existingCalls = await prisma.callLog.findMany({
@@ -477,6 +499,31 @@ export class CallLogService {
               recordingLink: r.recordingLink ?? null,
             })),
           });
+
+          // 3. Post-sync SQL cleanup safeguard: Scoped query to delete any duplicate records for the synced numbers.
+          // This prevents duplicates from concurrent sync requests (race conditions) on database level.
+          const uniqueMobileNumbers = Array.from(new Set(uniqueChunk.map((r) => r.mobileNumber)));
+          if (uniqueMobileNumbers.length > 0) {
+            const sanitizedNumbers = uniqueMobileNumbers
+              .map(num => `'${num.replace(/[^+\d]/g, "")}'`)
+              .filter(num => num.length > 2)
+              .join(",");
+
+            if (sanitizedNumbers) {
+              await prisma.$executeRawUnsafe(`
+                DELETE FROM "CallLog"
+                WHERE "organizationId" = '${organizationId}'
+                  AND "mobileNumber" IN (${sanitizedNumbers})
+                  AND "id" NOT IN (
+                    SELECT MIN("id")
+                    FROM "CallLog"
+                    WHERE "organizationId" = '${organizationId}'
+                      AND "mobileNumber" IN (${sanitizedNumbers})
+                    GROUP BY "organizationId", "importedById", "mobileNumber", "date", "callType", "duration", "simSlot"
+                  )
+              `);
+            }
+          }
         }
 
         successCount += uniqueChunk.length;

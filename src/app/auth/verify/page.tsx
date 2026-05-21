@@ -142,11 +142,11 @@ function VerifyOTPContent() {
 
       if (data.success) {
         if (data.autoVerified) {
-          // SMTP नाही — auto verified
+          // No SMTP — auto verified
           router.push("/dashboard");
           return;
         }
-        // Dev OTP show करा
+        // Show Dev OTP
         if (data.devOtp) setDevOtp(data.devOtp);
         setCountdown(60);
         setCanResend(false);

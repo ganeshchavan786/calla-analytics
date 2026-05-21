@@ -1,6 +1,6 @@
 // =====================================================
 // FILE: src/services/sim.service.ts  (NEW FILE)
-// ACTION: नवीन file बनवा
+// ACTION: Create new file
 // =====================================================
 
 import prisma from "@/lib/prisma";
@@ -8,7 +8,7 @@ import prisma from "@/lib/prisma";
 export class SimService {
 
   // ─────────────────────────────────────────
-  // SIM Register करा (Mobile App वरून येईल)
+  // Register SIM (called from Mobile App)
   // ─────────────────────────────────────────
   static async registerSIM(
     userId: string,
@@ -19,7 +19,7 @@ export class SimService {
     deviceId?: string
   ) {
     const dId = deviceId || "unknown";
-    // Already registered आहे का check करा
+    // Check if already registered
     const existing = await prisma.registeredSIM.findUnique({
       where: {
         userId_deviceId_simSlot: {
@@ -31,7 +31,7 @@ export class SimService {
     });
 
     if (existing) {
-      // Update करा — phone number बदलला असेल
+      // Update if phone number has changed
       return prisma.registeredSIM.update({
         where: {
           userId_deviceId_simSlot: {
@@ -49,7 +49,7 @@ export class SimService {
       });
     }
 
-    // नवीन register करा
+    // Register new SIM
     return prisma.registeredSIM.create({
       data: {
         userId,
@@ -64,7 +64,7 @@ export class SimService {
   }
 
   // ─────────────────────────────────────────
-  // User च्या सर्व SIMs मिळवा
+  // Get all SIMs for a User
   // ─────────────────────────────────────────
   static async getUserSIMs(userId: string) {
     return prisma.registeredSIM.findMany({
@@ -74,8 +74,8 @@ export class SimService {
   }
 
   // ─────────────────────────────────────────
-  // Organization च्या सर्व Members च्या SIMs
-  // (Owner dashboard साठी)
+  // Get SIMs of all Members in the Organization
+  // (For Owner dashboard)
   // ─────────────────────────────────────────
   static async getOrganizationSIMs(organizationId: string) {
     return prisma.registeredSIM.findMany({
@@ -90,7 +90,7 @@ export class SimService {
   }
 
   // ─────────────────────────────────────────
-  // Sync झाल्यावर lastSyncAt update करा
+  // Update lastSyncAt after synchronization
   // ─────────────────────────────────────────
   static async updateLastSync(
     userId: string,
@@ -113,7 +113,7 @@ export class SimService {
   }
 
   // ─────────────────────────────────────────
-  // SIM deactivate करा
+  // Deactivate SIM
   // ─────────────────────────────────────────
   static async deactivateSIM(userId: string, simSlot: string, deviceId?: string) {
     const dId = deviceId || "unknown";

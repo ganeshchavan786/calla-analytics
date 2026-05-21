@@ -17,18 +17,18 @@ export function getApiDocs() {
 ## CallLog SaaS — Complete API Documentation
 
 ### Authentication
-सगळ्या protected routes साठी JWT token लागतो.
-Login केल्यावर token मिळतो — Authorization header मध्ये पाठवा:
+JWT token is required for all protected routes.
+The token is received upon login — send it in the Authorization header:
 \`\`\`
 Authorization: Bearer <your_token>
 \`\`\`
 
 ### Organization Scoping
-सगळ्या API calls मध्ये \`orgId\` required आहे.
-Login नंतर \`organizations[0].id\` वापरा.
+\`orgId\` is required in all API calls.
+Use \`organizations[0].id\` after logging in.
 
 ### Mobile App APIs
-Mobile App साठी वेगळे endpoints आहेत:
+Separate endpoints are available for the Mobile App:
 - \`/api/mobile/verify\` → Login + Code verify
 - \`/api/mobile/register-sim\` → SIM register
 - \`/api/mobile/sync\` → Call logs push
@@ -58,7 +58,7 @@ Mobile App साठी वेगळे endpoints आहेत:
             type: "http",
             scheme: "bearer",
             bearerFormat: "JWT",
-            description: "Login करून token मिळवा. Format: Bearer <token>",
+            description: "Login to get the token. Format: Bearer <token>",
           },
         },
 
@@ -258,7 +258,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Auth"],
             summary: "Register new user",
-            description: "नवीन user register करा. Organization automatically create होते. Owner ला OWN-XXXX code मिळतो.",
+            description: "Register a new user. The organization is created automatically, and the owner gets an OWN-XXXX code.",
             security: [],
             requestBody: {
               required: true,
@@ -309,7 +309,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Auth"],
             summary: "Login",
-            description: "Email + Password से login करा. Token मिळतो.",
+            description: "Login using Email and Password to get the JWT token.",
             security: [],
             requestBody: {
               required: true,
@@ -360,7 +360,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Auth"],
             summary: "Logout",
-            description: "Session clear करा.",
+            description: "Clear the active session.",
             responses: {
               200: { description: "Logged out successfully" },
             },
@@ -406,7 +406,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Auth"],
             summary: "Forgot password",
-            description: "Email पाठवा — reset link मिळेल. Dev mode मध्ये token response मध्येच येतो.",
+            description: "Send email to receive a password reset link. In development mode, the token is included directly in the response.",
             security: [],
             requestBody: {
               required: true,
@@ -432,7 +432,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Auth"],
             summary: "Reset password",
-            description: "Forgot password च्या token ने नवीन password set करा.",
+            description: "Set a new password using the forgot password token.",
             security: [],
             requestBody: {
               required: true,
@@ -464,7 +464,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Organizations"],
             summary: "List my organizations",
-            description: "Current user च्या सर्व organizations list करा.",
+            description: "List all organizations for the current user.",
             responses: {
               200: { description: "Organizations list" },
               401: { description: "Unauthorized" },
@@ -498,7 +498,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Organizations"],
             summary: "List members",
-            description: "Organization च्या सर्व members list करा. uniqueCode पण येतो.",
+            description: "List all members of the organization. Includes the uniqueCode.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             ],
@@ -509,7 +509,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Organizations"],
             summary: "Invite member",
-            description: "Email ने member invite करा. (Admin/Owner only)",
+            description: "Invite a member using their email. (Admin/Owner only)",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             ],
@@ -529,7 +529,7 @@ Mobile App साठी वेगळे endpoints आहेत:
               },
             },
             responses: {
-              201: { description: "Invite created. Employee ला EMP-XXXX code मिळेल invite accept केल्यावर." },
+              201: { description: "Invite created. The employee will get an EMP-XXXX code after accepting the invite." },
               403: { description: "Admin/Owner role required" },
             },
           },
@@ -543,7 +543,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Call Logs"],
             summary: "List call logs",
-            description: "Call logs list करा — filters, search, pagination सह.",
+            description: "List call logs with filtering, searching, and pagination.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
               { name: "search", in: "query", schema: { type: "string" }, description: "Number/name/notes search" },
@@ -626,7 +626,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           delete: {
             tags: ["Call Logs"],
             summary: "Delete call log (soft delete)",
-            description: "Admin/Owner only. Soft delete — audit trail preserve होतो.",
+            description: "Admin/Owner only. Soft delete preserves the audit trail.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
               { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -681,7 +681,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Import"],
             summary: "Import call logs from file",
-            description: "CSV, Excel, Android Backup file upload करा. Max 20MB.",
+            description: "Upload CSV, Excel, or Android Backup file. Maximum size 20MB.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             ],
@@ -743,7 +743,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Analytics"],
             summary: "Get analytics data",
-            description: "Dashboard stats, trends, heatmap, team performance वगैरे.",
+            description: "Dashboard stats, trends, heatmap, team performance, etc.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
               {
@@ -755,7 +755,7 @@ Mobile App साठी वेगळे endpoints आहेत:
                 description: "overview=KPI stats, trends=line chart, heatmap=hour grid, top-numbers=frequent numbers, team=employee stats",
               },
               { name: "period", in: "query", schema: { type: "string", enum: ["today", "yesterday", "7d", "30d", "90d", "custom"] } },
-              { name: "dateFrom", in: "query", schema: { type: "string", format: "date" }, description: "period=custom असेल तर required" },
+              { name: "dateFrom", in: "query", schema: { type: "string", format: "date" }, description: "required if period=custom" },
               { name: "dateTo", in: "query", schema: { type: "string", format: "date" } },
               { name: "groupBy", in: "query", schema: { type: "string", enum: ["day", "week", "month"] } },
             ],
@@ -805,7 +805,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Tasks"],
             summary: "List tasks",
-            description: "?view=kanban पाठवा for grouped Kanban data.",
+            description: "Send ?view=kanban for grouped Kanban data.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
               { name: "view", in: "query", schema: { type: "string", enum: ["list", "kanban"] } },
@@ -921,7 +921,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["SIMs"],
             summary: "Get SIM registrations",
-            description: "Owner/Admin → सर्व employees चे SIMs. Member → फक्त स्वतःचे.",
+            description: "Owner/Admin gets SIMs of all employees. Member gets only their own SIMs.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             ],
@@ -952,7 +952,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           get: {
             tags: ["Reports"],
             summary: "Generate report",
-            description: "Report generate करा — JSON preview मिळतो. Download साठी format=CSV/EXCEL.",
+            description: "Generate report — returns a JSON preview. For file download, specify format=CSV or EXCEL.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
               {
@@ -988,7 +988,7 @@ Mobile App साठी वेगळे endpoints आहेत:
           patch: {
             tags: ["Notifications"],
             summary: "Mark notifications as read",
-            description: "id पाठवा → एक mark read. id नसेल → सर्व mark read.",
+            description: "Provide an id to mark a specific notification as read. If no id is provided, all notifications will be marked as read.",
             parameters: [
               { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             ],
@@ -1039,13 +1039,13 @@ Mobile App साठी वेगळे endpoints आहेत:
           post: {
             tags: ["Mobile App"],
             summary: "Mobile App Login",
-            description: `**Mobile App developer साठी**
+            description: `**For Mobile App Developers**
 
-Step 1: Email + Password + uniqueCode verify करा.
-- Owner चा code: OWN-XXXX (Dashboard मध्ये दिसतो)
-- Employee चा code: EMP-XXXX (Settings मध्ये दिसतो)
+Step 1: Verify Email + Password + uniqueCode.
+- Owner code format: OWN-XXXX (visible in Dashboard)
+- Employee code format: EMP-XXXX (visible in Settings)
 
-Code चुकीचा असेल तर login होणार नाही.`,
+Login will fail if the code is incorrect.`,
             security: [],
             requestBody: {
               required: true,
@@ -1057,7 +1057,7 @@ Code चुकीचा असेल तर login होणार नाही.`
                     properties: {
                       email: { type: "string", example: "rahul@company.com" },
                       password: { type: "string", example: "Admin1234" },
-                      uniqueCode: { type: "string", example: "EMP-7341", description: "Dashboard मधून copy करा" },
+                      uniqueCode: { type: "string", example: "EMP-7341", description: "Copy from the dashboard" },
                     },
                   },
                 },
@@ -1065,7 +1065,7 @@ Code चुकीचा असेल तर login होणार नाही.`
             },
             responses: {
               200: {
-                description: "Login successful — token save करा",
+                description: "Login successful — save this token",
                 content: {
                   "application/json": {
                     schema: {
@@ -1075,7 +1075,7 @@ Code चुकीचा असेल तर login होणार नाही.`
                         data: {
                           type: "object",
                           properties: {
-                            token: { type: "string", description: "हा token सर्व API calls मध्ये वापरा" },
+                            token: { type: "string", description: "Use this token in all subsequent API calls" },
                             user: { $ref: "#/components/schemas/User" },
                             organization: { $ref: "#/components/schemas/Organization" },
                             registeredSIMs: { type: "array" },
@@ -1095,11 +1095,11 @@ Code चुकीचा असेल तर login होणार नाही.`
           post: {
             tags: ["Mobile App"],
             summary: "Register SIM",
-            description: `**Mobile App developer साठी**
+            description: `**For Mobile App Developers**
 
-Login नंतर SIM register करा.
-- SIM_1 आणि SIM_2 स्वतंत्र register करता येतात.
-- Already registered असेल तर update होतो.`,
+Register SIM after login.
+- SIM_1 and SIM_2 can be registered independently.
+- If already registered, the entry will be updated.`,
             requestBody: {
               required: true,
               content: {
@@ -1123,7 +1123,7 @@ Login नंतर SIM register करा.
           get: {
             tags: ["Mobile App"],
             summary: "Get my registered SIMs",
-            description: "Current user चे registered SIMs list करा.",
+            description: "List registered SIMs of the current user.",
             responses: { 200: { description: "SIM list" } },
           },
         },
@@ -1132,13 +1132,13 @@ Login नंतर SIM register करा.
           post: {
             tags: ["Mobile App"],
             summary: "Sync call logs",
-            description: `**Mobile App developer साठी — Main API**
+            description: `**For Mobile App Developers — Main API**
 
-Android मधून call logs push करा.
-- Max 5000 records per request
-- Batch मध्ये insert होतात (performance साठी)
-- Missed calls साठी automatic notification जाते
-- simSlot field required — SIM wise data separate होतो`,
+Push call logs from the Android app.
+- Maximum of 5000 records per request.
+- Inserted in batches for optimal performance.
+- Missed calls automatically trigger notifications.
+- simSlot field is required to separate data by SIM.`,
             requestBody: {
               required: true,
               content: {
@@ -1155,7 +1155,7 @@ Android मधून call logs push करा.
                       simSlot: {
                         type: "string",
                         enum: ["SIM_1", "SIM_2", "UNKNOWN"],
-                        description: "कोणत्या SIM चे records आहेत",
+                        description: "Indicates which SIM slot the records belong to",
                       },
                     },
                   },
@@ -1216,7 +1216,7 @@ Android मधून call logs push करा.
           get: {
             tags: ["Mobile App"],
             summary: "Get sync status",
-            description: "Current user चा sync status, registered SIMs, last sync info.",
+            description: "Returns the sync status, registered SIMs, and last sync info of the current user.",
             responses: {
               200: {
                 description: "Status info",

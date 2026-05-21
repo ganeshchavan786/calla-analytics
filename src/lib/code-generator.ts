@@ -1,20 +1,20 @@
 // =====================================================
 // FILE: src/lib/code-generator.ts  (NEW FILE)
-// ACTION: नवीन file बनवा
+// ACTION: Create new file
 // =====================================================
 
 import prisma from "./prisma";
 
 type CodeType = "OWNER" | "EMPLOYEE";
 
-// OWN-4829 या EMP-7341 format मध्ये code बनवतो
+// Generates code in OWN-4829 or EMP-7341 format
 function makeCode(type: CodeType): string {
   const prefix = type === "OWNER" ? "OWN" : "EMP";
   const number = Math.floor(1000 + Math.random() * 9000); // 4 digit random
   return `${prefix}-${number}`;
 }
 
-// Unique code generate करतो — already exist असेल तर retry करतो
+// Generates unique code — retries if it already exists
 export async function generateUniqueCode(type: CodeType): Promise<string> {
   let code = makeCode(type);
   let attempts = 0;
@@ -24,18 +24,18 @@ export async function generateUniqueCode(type: CodeType): Promise<string> {
       where: { uniqueCode: code },
     });
 
-    if (!existing) return code; // unique आहे — return करा
+    if (!existing) return code; // unique — return it
 
-    code = makeCode(type);   // duplicate आहे — नवीन try करा
+    code = makeCode(type);   // duplicate — try new one
     attempts++;
   }
 
-  // fallback — timestamp add करा
+  // fallback — add timestamp
   const prefix = type === "OWNER" ? "OWN" : "EMP";
   return `${prefix}-${Date.now().toString().slice(-5)}`;
 }
 
-// Code valid आहे का check करा
+// Check if code is valid
 export function isOwnerCode(code: string): boolean {
   return /^OWN-\d{4,5}$/.test(code);
 }

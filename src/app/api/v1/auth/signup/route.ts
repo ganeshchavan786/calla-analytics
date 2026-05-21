@@ -116,15 +116,15 @@ export async function POST(req: NextRequest) {
           user: finalUser,
           organizationId: org.id,
           token,
-          // Frontend ला सांगा पुढे काय करायचे
+          // Tell frontend what to do next
           nextStep: finalUser?.isVerified ? "dashboard" : "verify-otp",
           emailSent,
           smtpConfigured,
-          // Dev mode मध्ये OTP show करा
+          // Show OTP in dev mode
           ...(process.env.NODE_ENV === "development" && otp
             ? { devOtp: otp }
             : {}),
-          // Email fail झाला तर message
+          // Message if email fails
           ...(emailError
             ? { warning: "Email could not be sent. You have been auto-verified." }
             : {}),

@@ -37,14 +37,14 @@ export default function SignupPage() {
         localStorage.setItem("currentOrgId", data.data.organizationId);
       }
 
-      // nextStep वरून decide करा
+      // Decide based on nextStep
       if (data.data.nextStep === "verify-otp") {
-        // SMTP configured आहे → OTP verify page वर जा
+        // SMTP configured → go to OTP verification page
         const params = new URLSearchParams({ email: form.email });
         if (data.data.devOtp) params.set("devOtp", data.data.devOtp);
         router.push(`/auth/verify?${params}`);
       } else {
-        // Auto verified → Dashboard वर जा
+        // Auto verified → go to Dashboard
         router.push("/dashboard");
       }
     } catch {

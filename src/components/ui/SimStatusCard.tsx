@@ -1,8 +1,8 @@
 "use client";
 // =====================================================
 // FILE: src/components/ui/SimStatusCard.tsx  (NEW FILE)
-// ACTION: नवीन file बनवा
-// PURPOSE: SIM registration status दाखवणारा card
+// ACTION: Create new file
+// PURPOSE: Card displaying SIM registration status
 // =====================================================
 
 import { Smartphone, Wifi, WifiOff, Clock } from "lucide-react";
@@ -101,7 +101,7 @@ export function SimStatusCard({ sims, showRegisterButton = false }: SimStatusCar
       </div>
 
       <p className="text-xs text-gray-400 mt-3 text-center">
-        SIM register करण्यासाठी Mobile App वापरा
+        Use the Mobile App to register SIM cards
       </p>
     </div>
   );

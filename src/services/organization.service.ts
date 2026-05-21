@@ -36,7 +36,7 @@ export class OrganizationService {
       },
     });
 
-    // Owner ला uniqueCode assign करा
+    // Assign uniqueCode to Owner
     const existing = await prisma.user.findUnique({
       where: { id: userId },
       select: { uniqueCode: true },
@@ -297,7 +297,7 @@ export class OrganizationService {
       data: { acceptedAt: new Date() },
     });
 
-    // Employee ला uniqueCode assign करा (नसेल तर)
+    // Assign uniqueCode to Employee if not already present
     if (!user.uniqueCode) {
       const empCode = await generateUniqueCode("EMPLOYEE");
       await prisma.user.update({

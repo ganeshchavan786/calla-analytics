@@ -6,14 +6,14 @@
 
 ### Step 1: Database Setup (Neon.tech)
 ```
-1. https://neon.tech वर जा → Sign Up
-2. New Project बनवा → "calllog-db"
-3. Dashboard मध्ये Connection String copy करा:
+1. Go to https://neon.tech → Sign Up
+2. Create New Project → "calllog-db"
+3. Copy Connection String in Dashboard:
    postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/calllog_db?sslmode=require
-4. हा string DATABASE_URL म्हणून save करा
+4. Save this string as DATABASE_URL
 ```
 
-### Step 2: prisma/schema.prisma बदला
+### Step 2: Update prisma/schema.prisma
 ```prisma
 datasource db {
   provider = "postgresql"
@@ -21,7 +21,7 @@ datasource db {
 }
 ```
 
-### Step 3: GitHub वर Push करा
+### Step 3: Push to GitHub
 ```bash
 git init
 git add .
@@ -35,13 +35,13 @@ git push -u origin main
 ```
 1. https://vercel.com → Sign Up with GitHub
 2. New Project → Import your GitHub repo
-3. Environment Variables add करा:
+3. Add Environment Variables:
    DATABASE_URL      = postgresql://... (Neon string)
-   JWT_SECRET        = (openssl rand -base64 32 ने generate करा)
+   JWT_SECRET        = (generate using openssl rand -base64 32)
    NEXT_PUBLIC_APP_URL = https://your-project.vercel.app
    NODE_ENV          = production
-4. Deploy click करा
-5. Deploy झाल्यावर:
+4. Click Deploy
+5. After deploy:
    vercel.com → Project → Functions tab → Terminal:
    npx prisma migrate deploy
    npm run db:seed
@@ -54,14 +54,14 @@ git push -u origin main
 ```
 1. https://railway.app → Sign Up
 2. New Project → Deploy from GitHub repo
-3. + New → Database → PostgreSQL add करा
+3. + New → Database → Add PostgreSQL
 4. Settings → Environment Variables:
    JWT_SECRET        = (random string)
    NEXT_PUBLIC_APP_URL = https://your-app.railway.app
    NODE_ENV          = production
-   (DATABASE_URL automatically set होतो Railway मध्ये)
-5. Deploy होईल automatically
-6. Railway Shell मध्ये:
+   (DATABASE_URL is automatically set in Railway)
+5. Will deploy automatically
+6. In Railway Shell:
    npx prisma migrate deploy
    npm run db:seed
 ```
@@ -105,7 +105,7 @@ NODE_ENV=production
 
 ### 4. Schema + Build
 ```bash
-# schema.prisma मध्ये provider = "postgresql" करा
+# Change provider = "postgresql" in schema.prisma
 npx prisma migrate deploy
 npm run db:seed
 npm run build
@@ -162,14 +162,14 @@ sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 □ NODE_ENV      → production
 □ schema.prisma → provider = "postgresql"
 □ Migrations    → npx prisma migrate deploy
-□ HTTPS/SSL     → Certbot या Vercel automatic
+□ HTTPS/SSL     → Certbot or Vercel automatic
 □ Uploads       → /uploads folder writable
 □ PM2/Docker    → Process always running
 ```
 
 ---
 
-## JWT Secret Generate करायचे कसे
+## How to Generate JWT Secret
 
 ```bash
 # Option 1: OpenSSL
@@ -187,7 +187,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ## Maintenance Commands
 
 ```bash
-# Logs बघा
+# View Logs
 pm2 logs calllog
 
 # Restart
@@ -199,6 +199,6 @@ npm install
 npm run build
 pm2 restart calllog
 
-# DB Studio (browser मध्ये DB बघा)
+# DB Studio (view DB in browser)
 npx prisma studio
 ```

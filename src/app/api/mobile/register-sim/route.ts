@@ -1,7 +1,7 @@
 // =====================================================
 // FILE: src/app/api/mobile/register-sim/route.ts  (NEW FILE)
-// ACTION: नवीन file बनवा
-// PURPOSE: Mobile App → SIM 1 / SIM 2 register करा
+// ACTION: Create new file
+// PURPOSE: Mobile App → Register SIM 1 / SIM 2
 // =====================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── Input validate ───
+    // ─── Input validation ───
     const body = await req.json();
     const parsed = RegisterSIMSchema.safeParse(body);
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const { simSlot, phoneNumber, deviceName, deviceId } = parsed.data;
 
-    // ─── Organization मिळवा ───
+    // ─── Get Organization ───
     const membership = await prisma.organizationMember.findFirst({
       where: { userId: payload.userId },
       select: { organizationId: true },
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     if (!membership) {
       return NextResponse.json(
-        { success: false, error: "NO_ORGANIZATION", message: "Organization नाही" },
+        { success: false, error: "NO_ORGANIZATION", message: "Organization not found" },
         { status: 403 }
       );
     }
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── SIM Register करा ───
+    // ─── Register SIM ───
     const sim = await SimService.registerSIM(
       payload.userId,
       membership.organizationId,
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── GET: User च्या registered SIMs list ───
+// ─── GET: List of user's registered SIMs ───
 export async function GET(req: NextRequest) {
   try {
     const token = getTokenFromRequest(req);

@@ -1,16 +1,16 @@
 "use client";
 // =====================================================
 // FILE: src/components/ui/MyCodeCard.tsx  (NEW FILE)
-// ACTION: नवीन file बनवा
-// PURPOSE: OWN-XXXX / EMP-XXXX code दाखवणारा card
-//          Dashboard + Employee page दोन्हीकडे वापरा
+// ACTION: Create new file
+// PURPOSE: Card displaying OWN-XXXX / EMP-XXXX code
+//          Used on both Dashboard + Employee page
 // =====================================================
 
 import { useState } from "react";
 import { Copy, Check, Smartphone } from "lucide-react";
 
 interface MyCodeCardProps {
-  code: string;          // "OWN-4829" या "EMP-7341"
+  code: string;          // "OWN-4829" or "EMP-7341"
   codeType: "OWNER" | "EMPLOYEE";
 }
 

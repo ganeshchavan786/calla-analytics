@@ -1,10 +1,10 @@
 // ================================================
 // FILE: src/app/api/mobile/sync/route.ts
-// ACTION: EXISTING file पूर्ण replace करा
+// ACTION: Fully replace EXISTING file
 // CHANGE:
-//   1. organizationId token वरून घेतो (request मधून नाही)
-//   2. SIM चा स्वतःचा number RegisteredSIM वरून join
-//   3. Response मध्ये ownership summary add केले
+//   1. Get organizationId from token (not from request)
+//   2. Join SIM's own number from RegisteredSIM
+//   3. Add ownership summary in response
 // ================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -52,20 +52,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Step 2: organizationId TOKEN वरून घ्या ──
-    // App ला request मध्ये orgId पाठवायची गरज नाही
-    // Token मध्येच embed आहे — secure आहे
+    // ── Step 2: Get organizationId from TOKEN ──
+    // App does not need to send orgId in request
+    // It is embedded in Token — it is secure
     let organizationId = payload.organizationId;
 
     if (!organizationId) {
-      // Fallback: DB वरून घ्या (old tokens साठी)
+      // Fallback: Get from DB (for old tokens)
       const membership = await prisma.organizationMember.findFirst({
         where: { userId: payload.userId },
         select: { organizationId: true },
       });
       if (!membership) {
         return NextResponse.json(
-          { success: false, error: "NO_ORGANIZATION", message: "Organization नाही" },
+          { success: false, error: "NO_ORGANIZATION", message: "Organization not found" },
           { status: 403 }
         );
       }
@@ -139,8 +139,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Step 5: SIM चा स्वतःचा number मिळवा ──
-    // RegisteredSIM table वरून join करतो
+    // ── Step 5: Get SIM's own number ──
+    // Join from RegisteredSIM table
     let simOwnNumber: string | null = null;
     let simDeviceName: string | null = null;
 
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       simDeviceName = registeredSIM?.deviceName ?? null;
     }
 
-    // ── Step 6: Import Batch बनवा ──
+    // ── Step 6: Create Import Batch ──
     const batch = await prisma.importBatch.create({
       data: {
         organizationId,
@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
             organizationId,
             type: "MISSED_CALL",
             title: "Missed Calls Synced",
-            body: `${employee.name} च्या ${simSlot?.replace("_", " ") || "SIM"} वरून ${missedCalls.length} missed call${missedCalls.length > 1 ? "s" : ""} sync झाले`,
+            body: `${missedCalls.length} missed call${missedCalls.length > 1 ? "s" : ""} synced from ${employee.name}'s ${simSlot?.replace("_", " ") || "SIM"}`,
             link: "/call-logs?callType=MISSED",
           }
         );
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
         syncedAt: new Date().toISOString(),
       },
 
-      // Data ownership — server ने confirm केले
+      // Data ownership — confirmed by server
       ownership: {
         organization: {
           id: organization.id,
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
         },
         sim: {
           slot: simSlot ?? "UNKNOWN",
-          ownNumber: simOwnNumber,      // SIM चा स्वतःचा number
+          ownNumber: simOwnNumber,      // SIM's own number
           deviceName: simDeviceName,
         },
       },

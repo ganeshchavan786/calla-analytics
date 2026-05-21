@@ -1,5 +1,5 @@
 // src/app/api/v1/auth/accept-invite/route.ts — NEW
-// Employee invite accept करतो + register होतो
+// Employee accepts invite + registers
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -8,7 +8,7 @@ import { OrganizationService } from "@/services/organization.service";
 import { sendWelcomeEmail } from "@/lib/license-smtp";
 import { z } from "zod";
 
-// GET — invite token validate करा (page load वर)
+// GET — validate invite token (on page load)
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       role: invite.role,
       organization: invite.organization,
       expiresAt: invite.expiresAt,
-      userExists: !!existingUser, // true = login करा, false = register करा
+      userExists: !!existingUser, // true = login, false = register
     },
   });
 }
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     const { token, name, password } = parsed.data;
 
-    // Invite validate करा
+    // Validate invite
     const invite = await prisma.invite.findUnique({
       where: { token },
       include: {
@@ -124,10 +124,10 @@ export async function POST(req: NextRequest) {
     let userId: string;
 
     if (existingUser) {
-      // User आधीच exist करतो — directly invite accept करा
+      // User already exists — accept invite directly
       userId = existingUser.id;
     } else {
-      // नवीन user — name + password required
+      // New user — name + password required
       if (!name || !password) {
         return NextResponse.json(
           {
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
           name,
           email: invite.email,
           passwordHash,
-          isVerified: true, // Invitation मधून आल्यामुळे auto-verified
+          isVerified: true, // Auto-verified since they came from invitation
         },
         select: { id: true, name: true, email: true, avatarUrl: true, uniqueCode: true },
       });
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       existingUser = newUser;
     }
 
-    // Invite accept करा — membership create + EMP code assign
+    // Accept invite — create membership + assign EMP code
     await OrganizationService.acceptInvite(token, userId);
 
     // Updated user (with uniqueCode)
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       invite.organization.name
     ).catch((err: any) => console.error("[Welcome Email Failed]", err.message));
 
-    // JWT token issue करा
+    // Issue JWT token
     const jwtToken = await signToken({
       userId,
       email: invite.email,

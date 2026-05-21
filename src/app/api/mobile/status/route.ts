@@ -1,7 +1,7 @@
 // =====================================================
 // FILE: src/app/api/mobile/status/route.ts  (NEW FILE)
-// ACTION: नवीन file बनवा
-// PURPOSE: Mobile App → Sync status check करा
+// ACTION: Create new file
+// PURPOSE: Mobile App → Check sync status
 // =====================================================
 
 export const dynamic = "force-dynamic";
