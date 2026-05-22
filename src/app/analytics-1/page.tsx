@@ -1073,14 +1073,37 @@ export default function Analytics1Page() {
           };
         });
 
-        const renderProgressCell = (percent: number, colorClass: string) => (
-          <div className="flex flex-col items-center justify-center space-y-1">
-            <span className="font-bold text-gray-800">{percent.toFixed(1)}%</span>
-            <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
-              <div className={`h-full ${colorClass} rounded-full`} style={{ width: `${percent}%` }}></div>
+        const renderProgressCell = (percent: number, type: 'calls' | 'connected' | 'duration') => {
+          let gradientClass = "";
+          let textClass = "";
+          let glowClass = "";
+          
+          if (type === 'calls') {
+            gradientClass = "bg-gradient-to-r from-amber-400 to-orange-500";
+            textClass = "text-orange-600 font-bold";
+            glowClass = "shadow-[0_0_8px_rgba(249,115,22,0.2)]";
+          } else if (type === 'connected') {
+            gradientClass = "bg-gradient-to-r from-sky-400 to-blue-500";
+            textClass = "text-blue-600 font-bold";
+            glowClass = "shadow-[0_0_8px_rgba(14,165,233,0.2)]";
+          } else {
+            gradientClass = "bg-gradient-to-r from-violet-500 to-indigo-600";
+            textClass = "text-indigo-600 font-bold";
+            glowClass = "shadow-[0_0_8px_rgba(99,102,241,0.2)]";
+          }
+
+          return (
+            <div className="flex flex-col items-center justify-center space-y-1 py-1 min-w-[70px]">
+              <span className={`text-xs font-mono ${textClass}`}>{percent.toFixed(1)}%</span>
+              <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden p-[1px]">
+                <div 
+                  className={`h-full ${gradientClass} rounded-full ${glowClass} transition-all duration-500 ease-out`} 
+                  style={{ width: `${percent}%` }}
+                ></div>
+              </div>
             </div>
-          </div>
-        );
+          );
+        };
 
         return (
           <div className="space-y-8 animate-fadeIn">
@@ -1165,43 +1188,67 @@ export default function Analytics1Page() {
             </div>
 
             {/* Hourly Time Slot Details Table */}
-            <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-1 overflow-hidden">
+              <div className="overflow-x-auto rounded-xl">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-100">
-                      <th className="py-4 px-4 font-bold min-w-[200px]">Hourly Time Slot</th>
-                      <th className="py-4 px-4 font-bold text-center">Total Calls</th>
-                      <th className="py-4 px-4 font-bold text-center">Total Connected Calls</th>
-                      <th className="py-4 px-4 font-bold">Total Duration</th>
-                      <th className="py-4 px-4 font-bold text-center">Total Calls (%)</th>
-                      <th className="py-4 px-4 font-bold text-center">Total Connected Calls (%)</th>
-                      <th className="py-4 px-4 font-bold text-center">Total Duration (%)</th>
+                    <tr className="bg-gradient-to-r from-slate-100/80 to-slate-50/80 text-slate-600 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                      <th className="py-4 px-5 min-w-[220px]">Hourly Time Slot</th>
+                      <th className="py-4 px-4 text-center">Total Calls</th>
+                      <th className="py-4 px-4 text-center">Total Connected Calls</th>
+                      <th className="py-4 px-4">Total Duration</th>
+                      <th className="py-4 px-4 text-center">Total Calls (%)</th>
+                      <th className="py-4 px-4 text-center">Total Connected Calls (%)</th>
+                      <th className="py-4 px-4 text-center">Total Duration (%)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                  <tbody className="divide-y divide-slate-100 text-slate-700 bg-white/50">
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">
+                        <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
                           Loading Hourly Analysis...
                         </td>
                       </tr>
                     ) : grandTotalCalls === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">
+                        <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
                           No call data found for this period.
                         </td>
                       </tr>
                     ) : (
                       hourlySlots.map((slot) => (
-                        <tr key={slot.hour24} className="hover:bg-gray-50/50 transition-colors font-medium">
-                          <td className="py-3.5 px-4 font-semibold text-gray-900">{slot.label}</td>
-                          <td className="py-3.5 px-4 text-center text-gray-700">{slot.totalCalls}</td>
-                          <td className="py-3.5 px-4 text-center text-gray-700">{slot.connectedCalls}</td>
-                          <td className="py-3.5 px-4 font-semibold text-gray-900">{formatHHMMSS(slot.totalDuration)}</td>
-                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.callsPercent, "bg-amber-500")}</td>
-                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.connectedPercent, "bg-sky-500")}</td>
-                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.durationPercent, "bg-indigo-500")}</td>
+                        <tr key={slot.hour24} className="hover:bg-slate-100/40 hover:-translate-y-[0.5px] transition-all duration-200 group font-medium">
+                          {/* Time Slot Badge with Clock Icon */}
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 group-hover:scale-110 transition-transform duration-200">
+                                <Clock size={13} className="stroke-[2.5]" />
+                              </div>
+                              <span className="font-semibold text-slate-800 text-sm tracking-tight">{slot.label}</span>
+                            </div>
+                          </td>
+                          {/* Monospace count badge */}
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="font-mono font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-xs shadow-sm">
+                              {slot.totalCalls}
+                            </span>
+                          </td>
+                          {/* Monospace connected count badge */}
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="font-mono font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-xs shadow-sm">
+                              {slot.connectedCalls}
+                            </span>
+                          </td>
+                          {/* Monospace Duration */}
+                          <td className="py-3.5 px-4">
+                            <span className="font-mono font-bold text-slate-800 text-xs">
+                              {formatHHMMSS(slot.totalDuration)}
+                            </span>
+                          </td>
+                          {/* Custom Progress Cells */}
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.callsPercent, 'calls')}</td>
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.connectedPercent, 'connected')}</td>
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.durationPercent, 'duration')}</td>
                         </tr>
                       ))
                     )}
