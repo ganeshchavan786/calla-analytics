@@ -6,12 +6,13 @@ import {
   Calendar, Users, BarChart2, Clock, Activity, FileText, Download,
   Search, ChevronDown, Check, X, Pin, Plus, AlertCircle, ChevronUp, Sliders,
   PhoneIncoming, PhoneOutgoing, PhoneMissed, Phone, TrendingUp,
-  ArrowDownLeft, ArrowUpRight, PhoneOff, User, StickyNote, Star, Smartphone, Tag
+  ArrowDownLeft, ArrowUpRight, PhoneOff, User, StickyNote, Star, Smartphone, Tag,
+  Award, AlertTriangle, PhoneCall
 } from "lucide-react";
 import Link from "next/link";
 import {
   ResponsiveContainer, ComposedChart, BarChart, Bar, Line, AreaChart, Area, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart
 } from "recharts";
 
 interface CallLog {
@@ -37,6 +38,10 @@ const TABS = [
   { id: "NOT_PICKUP", label: "Not Pickup by Client", icon: Clock },
   { id: "UNIQUE_CLIENTS", label: "Unique Clients", icon: Users },
   { id: "CALL_HISTORY", label: "Call History", icon: FileText },
+  { id: "CALL_TRENDS", label: "Call Trends", icon: TrendingUp },
+  { id: "TEAM_PERFORMANCE", label: "Team Performance", icon: Users },
+  { id: "TOP_NUMBERS", label: "Top Numbers", icon: Phone },
+  { id: "PEAK_HOURS", label: "Peak Hours", icon: Clock },
 ];
 
 export default function Analytics1Page() {
@@ -2072,6 +2077,569 @@ export default function Analytics1Page() {
               </div>
             </div>
 
+          </div>
+        );
+      })()}
+
+      {/* ── Call Trends Tab View ── */}
+      {activeTab === "CALL_TRENDS" && (() => {
+        const COLORS = ["#10b981", "#3b82f6", "#ef4444", "#f59e0b"];
+        const daily: { [dateStr: string]: { date: string, rawDate: Date, incoming: number, outgoing: number, missed: number, total: number } } = {};
+        for (const call of calls) {
+          const dObj = new Date(call.date);
+          const dateStr = dObj.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+          if (!daily[dateStr]) {
+            daily[dateStr] = { date: dateStr, rawDate: dObj, incoming: 0, outgoing: 0, missed: 0, total: 0 };
+          }
+          daily[dateStr].total++;
+          if (call.callType === "INCOMING") daily[dateStr].incoming++;
+          else if (call.callType === "OUTGOING") daily[dateStr].outgoing++;
+          else if (call.callType === "MISSED") daily[dateStr].missed++;
+        }
+        const sortedDaily = Object.values(daily).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+        const pieData = sortedDaily.length > 0 ? [
+          { name: "Incoming", value: sortedDaily.reduce((s, t) => s + t.incoming, 0) },
+          { name: "Outgoing", value: sortedDaily.reduce((s, t) => s + t.outgoing, 0) },
+          { name: "Missed", value: sortedDaily.reduce((s, t) => s + t.missed, 0) },
+        ] : [];
+        
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+            {/* Line Chart */}
+            <div className="lg:col-span-2 bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <TrendingUp size={16} className="text-amber-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Daily Call Volume</h2>
+              </div>
+              <div className="h-[280px] w-full">
+                {sortedDaily.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sortedDaily} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }}
+                        labelStyle={{ fontWeight: "bold", color: "#1e293b", fontSize: "11px" }}
+                        itemStyle={{ fontSize: "11px", fontWeight: "600" }}
+                      />
+                      <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: "11px", fontWeight: "600", color: "#64748b" }} />
+                      <Line type="monotone" dataKey="incoming" stroke="#10b981" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 4 }} name="Incoming" />
+                      <Line type="monotone" dataKey="outgoing" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 4 }} name="Outgoing" />
+                      <Line type="monotone" dataKey="missed" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 4 }} name="Missed" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No data available for active period</div>
+                )}
+              </div>
+            </div>
+
+            {/* Pie Chart */}
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <Users size={16} className="text-indigo-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Call Distribution</h2>
+              </div>
+              <div className="h-[200px] w-full">
+                {pieData.length > 0 && pieData.some(d => d.value > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie 
+                        data={pieData} 
+                        cx="50%" 
+                        cy="50%" 
+                        innerRadius={55}
+                        outerRadius={75} 
+                        dataKey="value" 
+                        labelLine={false}
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i]} stroke="#fff" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}
+                        itemStyle={{ fontSize: "11px", fontWeight: "600" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No call distribution data</div>
+                )}
+              </div>
+              <div className="space-y-2 mt-4 border-t border-slate-100 pt-3">
+                {pieData.map((item, i) => (
+                  <div key={item.name} className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                      <span className="text-slate-600">{item.name}</span>
+                    </div>
+                    <span className="font-bold text-slate-800 font-mono">{item.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bar Chart */}
+            <div className="lg:col-span-3 bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <BarChart2 size={16} className="text-emerald-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Daily Total Calls (Bar View)</h2>
+              </div>
+              <div className="h-[220px] w-full">
+                {sortedDaily.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sortedDaily} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}
+                        labelStyle={{ fontWeight: "bold", color: "#1e293b", fontSize: "11px" }}
+                        itemStyle={{ fontSize: "11px", fontWeight: "600" }}
+                      />
+                      <Bar dataKey="incoming" fill="#10b981" name="Incoming" stackId="a" maxBarSize={20} />
+                      <Bar dataKey="outgoing" fill="#3b82f6" name="Outgoing" stackId="a" maxBarSize={20} />
+                      <Bar dataKey="missed" fill="#ef4444" name="Missed" stackId="a" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No data available for active period</div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Team Performance Tab View ── */}
+      {activeTab === "TEAM_PERFORMANCE" && (() => {
+        const teamStats = members.map(m => {
+          const empCalls = calls.filter(c => c.importedBy?.id === m.userId);
+          const totalCalls = empCalls.length;
+          const incomingCalls = empCalls.filter(c => c.callType === "INCOMING").length;
+          const outgoingCalls = empCalls.filter(c => c.callType === "OUTGOING").length;
+          const missedCalls = empCalls.filter(c => c.callType === "MISSED").length;
+          
+          const connectedCalls = empCalls.filter(c => c.callType !== "MISSED" && c.duration > 0);
+          const totalDuration = connectedCalls.reduce((sum, c) => sum + c.duration, 0);
+          const avgDuration = connectedCalls.length > 0 ? Math.round(totalDuration / connectedCalls.length) : 0;
+          
+          const activityScore = Math.round(
+            incomingCalls * 2 + outgoingCalls * 3 - missedCalls * 1 + avgDuration / 60
+          );
+          
+          return {
+            userId: m.userId,
+            userName: m.user.name,
+            totalCalls,
+            incomingCalls,
+            outgoingCalls,
+            missedCalls,
+            avgDuration,
+            activityScore: Math.max(0, activityScore)
+          };
+        }).sort((a, b) => b.activityScore - a.activityScore);
+        
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {teamStats.length === 0 ? (
+              <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400 font-semibold shadow-sm">
+                No team performance records available.
+              </div>
+            ) : (
+              <>
+                {/* Team Performance Table */}
+                <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-1 overflow-hidden">
+                  <div className="overflow-x-auto rounded-xl">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-slate-100/80 to-slate-50/80 text-slate-600 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                          <th className="py-4 px-5">
+                            <span className="flex items-center gap-1.5">
+                              <User size={13} className="text-slate-400" />
+                              Member
+                            </span>
+                          </th>
+                          <th className="py-4 px-4 text-center">
+                            <span className="flex items-center justify-center gap-1.5">
+                              <Award size={13} className="text-slate-400" />
+                              Total
+                            </span>
+                          </th>
+                          <th className="py-4 px-4 text-center">
+                            <span className="flex items-center justify-center gap-1.5 text-emerald-600">
+                              Incoming
+                            </span>
+                          </th>
+                          <th className="py-4 px-4 text-center">
+                            <span className="flex items-center justify-center gap-1.5 text-blue-600">
+                              Outgoing
+                            </span>
+                          </th>
+                          <th className="py-4 px-4 text-center">
+                            <span className="flex items-center justify-center gap-1.5 text-rose-600">
+                              Missed
+                            </span>
+                          </th>
+                          <th className="py-4 px-4">
+                            <span className="flex items-center gap-1.5">
+                              <Clock size={13} className="text-slate-400" />
+                              Avg Duration
+                            </span>
+                          </th>
+                          <th className="py-4 px-5">
+                            <span className="flex items-center gap-1.5">
+                              <TrendingUp size={13} className="text-slate-400" />
+                              Activity Score
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700 bg-white/50">
+                        {teamStats.map((member, i) => (
+                          <tr key={member.userId} className="hover:bg-slate-100/40 hover:-translate-y-[0.5px] transition-all duration-200 group font-medium">
+                            {/* Member info with initials avatar */}
+                            <td className="py-4 px-5">
+                              <div className="flex items-center gap-3">
+                                {renderAvatar(member.userName, member.userId)}
+                                <div>
+                                  <p className="font-semibold text-slate-800 leading-tight">{member.userName}</p>
+                                  {i === 0 && member.activityScore > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-100 shadow-sm mt-1 w-fit">
+                                      <Star size={9} className="fill-amber-500 text-amber-500 animate-pulse" />
+                                      Top Performer
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Total Calls */}
+                            <td className="py-4 px-4 text-center">
+                              <span className="font-mono font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-xs shadow-sm">
+                                {member.totalCalls}
+                              </span>
+                            </td>
+
+                            {/* Incoming Calls */}
+                            <td className="py-4 px-4 text-center">
+                              <span className="font-mono font-bold text-emerald-600 bg-emerald-50/50 px-2.5 py-1 rounded-lg border border-emerald-100/80 text-xs">
+                                {member.incomingCalls}
+                              </span>
+                            </td>
+
+                            {/* Outgoing Calls */}
+                            <td className="py-4 px-4 text-center">
+                              <span className="font-mono font-bold text-blue-600 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100/80 text-xs">
+                                {member.outgoingCalls}
+                              </span>
+                            </td>
+
+                            {/* Missed Calls */}
+                            <td className="py-4 px-4 text-center">
+                              <span className="font-mono font-bold text-rose-600 bg-rose-50/50 px-2.5 py-1 rounded-lg border border-rose-100/80 text-xs">
+                                {member.missedCalls}
+                              </span>
+                            </td>
+
+                            {/* Avg Duration */}
+                            <td className="py-4 px-4 text-slate-600 font-mono text-xs">
+                              {formatHMS(member.avgDuration)}
+                            </td>
+
+                            {/* Activity Score glowing progress bar */}
+                            <td className="py-4 px-5">
+                              <div className="flex items-center gap-3.5 min-w-[140px]">
+                                <div className="flex-1 bg-slate-100 rounded-full h-2 p-[1px] border border-slate-200/30 overflow-hidden">
+                                  <div
+                                    className="bg-gradient-to-r from-sky-400 to-blue-500 h-full rounded-full shadow-[0_0_8px_rgba(14,165,233,0.3)] transition-all duration-500"
+                                    style={{
+                                      width: `${Math.min(100, (member.activityScore / (teamStats[0]?.activityScore || 1)) * 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs font-mono font-bold text-slate-800 w-8">{member.activityScore}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Team Comparison chart card */}
+                <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+                  <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                    <Users size={16} className="text-blue-500" />
+                    <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Team Comparison</h2>
+                  </div>
+                  <div className="h-[260px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={teamStats} layout="vertical" margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                        <YAxis dataKey="userName" type="category" width={80} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}
+                          itemStyle={{ fontSize: "11px", fontWeight: "600" }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: "11px", fontWeight: "600" }} />
+                        <Bar dataKey="incomingCalls" fill="#10b981" name="Incoming" radius={[0, 3, 3, 0]} maxBarSize={15} />
+                        <Bar dataKey="outgoingCalls" fill="#3b82f6" name="Outgoing" radius={[0, 3, 3, 0]} maxBarSize={15} />
+                        <Bar dataKey="missedCalls" fill="#ef4444" name="Missed" radius={[0, 3, 3, 0]} maxBarSize={15} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Top Numbers Tab View ── */}
+      {activeTab === "TOP_NUMBERS" && (() => {
+        const grouped: Record<string, {
+          contactName: string | null;
+          count: number;
+          totalDuration: number;
+          lastCallDate: string;
+        }> = {};
+
+        for (const call of calls) {
+          if (!grouped[call.mobileNumber]) {
+            grouped[call.mobileNumber] = {
+              contactName: call.contactName,
+              count: 0,
+              totalDuration: 0,
+              lastCallDate: call.date,
+            };
+          }
+          grouped[call.mobileNumber].count++;
+          grouped[call.mobileNumber].totalDuration += call.duration;
+          if (new Date(call.date).getTime() > new Date(grouped[call.mobileNumber].lastCallDate).getTime()) {
+            grouped[call.mobileNumber].lastCallDate = call.date;
+          }
+        }
+
+        const topNumbers = Object.entries(grouped)
+          .map(([mobileNumber, data]) => ({ mobileNumber, ...data }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+
+        const duplicates = Object.entries(grouped)
+          .filter(([, v]) => v.count > 1)
+          .map(([mobileNumber, data]) => ({ mobileNumber, count: data.count, contactName: data.contactName }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Frequent Numbers Card */}
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-1 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200/50 bg-slate-50/30 flex items-center gap-2">
+                <Award size={16} className="text-amber-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Most Frequent Numbers</h2>
+              </div>
+              <div className="overflow-x-auto rounded-b-xl">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-slate-100/80 to-slate-50/80 text-slate-600 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200/80">
+                      <th className="py-4 px-5 text-center min-w-[50px]">#</th>
+                      <th className="py-4 px-4 min-w-[200px]">
+                        <span className="flex items-center gap-1.5">
+                          <Smartphone size={13} className="text-slate-400" />
+                          Number / Contact
+                        </span>
+                      </th>
+                      <th className="py-4 px-4 text-center">
+                        <span className="flex items-center justify-center gap-1.5">
+                          <PhoneCall size={13} className="text-slate-400" />
+                          Total Calls
+                        </span>
+                      </th>
+                      <th className="py-4 px-4">
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={13} className="text-slate-400" />
+                          Total Duration
+                        </span>
+                      </th>
+                      <th className="py-4 px-5">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar size={13} className="text-slate-400" />
+                          Last Call
+                        </span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700 bg-white/50">
+                    {topNumbers.map((num, i) => (
+                      <tr key={num.mobileNumber} className="hover:bg-slate-100/40 hover:-translate-y-[0.5px] transition-all duration-200 group font-medium">
+                        {/* Rank # badge */}
+                        <td className="py-4 px-5 text-center">
+                          <div className="flex justify-center">
+                            {i === 0 ? (
+                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm shadow-amber-100/60">
+                                <Star size={10} className="fill-amber-500 text-amber-500 mr-0.5 shrink-0" />1
+                              </span>
+                            ) : i === 1 ? (
+                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-sm">2</span>
+                            ) : i === 2 ? (
+                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">3</span>
+                            ) : (
+                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-slate-100 text-slate-500 border border-slate-100">{i + 1}</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Contact Info */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            {renderAvatar(num.contactName, num.mobileNumber)}
+                            <div>
+                              <p className="font-semibold text-slate-800 leading-tight">
+                                {num.contactName || (
+                                  <span className="text-amber-600 flex items-center gap-1 text-xs">
+                                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"></span>
+                                    New Lead
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{num.mobileNumber}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Count Badge */}
+                        <td className="py-4 px-4 text-center">
+                          <span className="font-mono font-bold text-slate-800 text-xs bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                            {num.count} <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider ml-0.5">calls</span>
+                          </span>
+                        </td>
+
+                        {/* Total Duration */}
+                        <td className="py-4 px-4 text-slate-700 font-mono text-xs">
+                          {formatHMS(num.totalDuration)}
+                        </td>
+
+                        {/* Last Call Date */}
+                        <td className="py-4 px-5 text-slate-500 font-mono text-xs">
+                          {new Date(num.lastCallDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Duplicates Alert Container */}
+            {duplicates.length > 0 && (
+              <div className="bg-gradient-to-br from-amber-50/80 to-orange-50/80 backdrop-blur-sm border border-amber-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center gap-2 border-b border-amber-200/40 pb-2">
+                  <AlertTriangle className="text-amber-500 shrink-0 animate-bounce" size={16} />
+                  <h3 className="font-bold text-amber-800 text-sm uppercase tracking-wider">Duplicate Numbers Detected</h3>
+                </div>
+                <p className="text-xs text-amber-700 font-semibold">{duplicates.length} numbers appear multiple times in your call logs.</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {duplicates.slice(0, 8).map((d) => (
+                    <div key={d.mobileNumber} className="bg-white/80 border border-amber-100 rounded-xl px-3 py-2 text-xs shadow-sm hover:scale-[1.02] transition-transform duration-200">
+                      <p className="font-bold text-slate-800 font-mono">{d.mobileNumber}</p>
+                      <p className="text-[10px] text-amber-600 font-semibold mt-0.5">{d.count} occurrences</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Peak Hours Tab View ── */}
+      {activeTab === "PEAK_HOURS" && (() => {
+        const heatmap = Array.from({ length: 24 }, (_, h) => ({
+          hour: h,
+          count: 0,
+          label: `${h.toString().padStart(2, "0")}:00`,
+        }));
+
+        for (const call of calls) {
+          const hour = new Date(call.date).getHours();
+          if (hour >= 0 && hour < 24) {
+            heatmap[hour].count++;
+          }
+        }
+
+        const maxHeat = Math.max(...heatmap.map((h) => h.count), 1);
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Heatmap Card */}
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-3">
+                <Clock size={16} className="text-indigo-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Peak Calling Hours</h2>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mb-6">Darker colors indicate higher call volumes during that hour</p>
+              <div className="grid grid-cols-6 sm:grid-cols-12 gap-3">
+                {heatmap.map((h) => {
+                  const intensity = h.count / maxHeat;
+                  return (
+                    <div key={h.hour} className="flex flex-col items-center gap-1.5 group">
+                      <div
+                        title={`${h.label}: ${h.count} calls`}
+                        className="w-full aspect-square rounded-xl flex items-center justify-center text-xs font-bold cursor-default transition-all duration-300 hover:scale-110 shadow-sm border border-slate-200/20"
+                        style={{
+                          backgroundColor: `rgba(59, 130, 246, ${Math.max(0.08, intensity)})`,
+                          color: intensity > 0.5 ? "white" : "#374151",
+                        }}
+                      >
+                        {h.count > 0 ? h.count : ""}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono group-hover:text-slate-700 transition-colors">{h.hour}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Volume: Less</span>
+                {[0.08, 0.25, 0.5, 0.75, 1].map((v) => (
+                  <div
+                    key={v}
+                    className="w-7 h-4 rounded-md border border-slate-200/20 shadow-sm"
+                    style={{ backgroundColor: `rgba(59, 130, 246, ${v})` }}
+                  />
+                ))}
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">More</span>
+              </div>
+            </div>
+
+            {/* Hourly distribution card */}
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-100/40 p-6 transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                <BarChart2 size={16} className="text-blue-500" />
+                <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Hourly Call Distribution</h2>
+              </div>
+              <div className="h-[240px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={heatmap} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}
+                      formatter={(val) => [`${val} calls`, "Count"]} 
+                      labelFormatter={(l) => `Hour ${l}:00`} 
+                    />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Calls" maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         );
       })()}
