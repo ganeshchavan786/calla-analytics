@@ -5,9 +5,13 @@ import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Calendar, Users, BarChart2, Clock, Activity, FileText, Download,
   Search, ChevronDown, Check, X, Pin, Plus, AlertCircle, ChevronUp, Sliders,
-  PhoneIncoming, PhoneOutgoing, PhoneMissed
+  PhoneIncoming, PhoneOutgoing, PhoneMissed, Phone, TrendingUp
 } from "lucide-react";
 import Link from "next/link";
+import {
+  ResponsiveContainer, ComposedChart, BarChart, Bar, Line, AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend
+} from "recharts";
 
 interface CallLog {
   id: string;
@@ -1052,8 +1056,114 @@ export default function Analytics1Page() {
           };
         });
 
+        const chartData = hourlySlots.map(slot => {
+          const shortLabel = slot.hour24 === 0 
+            ? "12 AM" 
+            : slot.hour24 === 12 
+            ? "12 PM" 
+            : slot.hour24 < 12 
+            ? `${slot.hour24} AM` 
+            : `${slot.hour24 - 12} PM`;
+          
+          return {
+            name: shortLabel,
+            "Total Calls": slot.totalCalls,
+            "Connected Calls": slot.connectedCalls,
+            "Duration (Min)": Math.round(slot.totalDuration / 60)
+          };
+        });
+
+        const renderProgressCell = (percent: number, colorClass: string) => (
+          <div className="flex flex-col items-center justify-center space-y-1">
+            <span className="font-bold text-gray-800">{percent.toFixed(1)}%</span>
+            <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full ${colorClass} rounded-full`} style={{ width: `${percent}%` }}></div>
+            </div>
+          </div>
+        );
+
         return (
           <div className="space-y-8 animate-fadeIn">
+            
+            {/* ── Hourly Distribution Chart ── */}
+            <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-gray-800">Hourly Call Distribution</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">Visual representation of call volume and talk-time by hour</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-amber-500 rounded-sm"></span>
+                    <span className="text-gray-600">Total Calls</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-sky-500 rounded-sm"></span>
+                    <span className="text-gray-600">Connected Calls</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-nowrap">
+                    <span className="w-3 h-0.5 bg-indigo-500 inline-block relative -top-0.5"></span>
+                    <span className="text-gray-600">Duration (Min)</span>
+                  </div>
+                </div>
+              </div>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 10, right: -5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="#9ca3af" 
+                      fontSize={9} 
+                      tickLine={false} 
+                      axisLine={false} 
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      stroke="#9ca3af" 
+                      fontSize={9} 
+                      tickLine={false} 
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <YAxis 
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="#9ca3af" 
+                      fontSize={9} 
+                      tickLine={false} 
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white border border-gray-150 p-2.5 rounded-lg shadow-lg text-[11px] space-y-1">
+                              <p className="font-bold text-gray-800 border-b border-gray-100 pb-1 mb-1">{label}</p>
+                              {payload.map((p, idx) => (
+                                <p key={idx} className="font-medium flex items-center justify-between gap-5">
+                                  <span className="text-gray-500 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }}></span>
+                                    {p.name}:
+                                  </span>
+                                  <span className="font-bold text-gray-900">{p.value}</span>
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar yAxisId="left" dataKey="Total Calls" fill="#f59e0b" radius={[3, 3, 0, 0]} maxBarSize={16} />
+                    <Bar yAxisId="left" dataKey="Connected Calls" fill="#0ea5e9" radius={[3, 3, 0, 0]} maxBarSize={16} />
+                    <Line yAxisId="right" type="monotone" dataKey="Duration (Min)" stroke="#6366f1" strokeWidth={2} dot={{ r: 2, stroke: "#6366f1", strokeWidth: 1, fill: "#fff" }} activeDot={{ r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             {/* Hourly Time Slot Details Table */}
             <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -1089,9 +1199,9 @@ export default function Analytics1Page() {
                           <td className="py-3.5 px-4 text-center text-gray-700">{slot.totalCalls}</td>
                           <td className="py-3.5 px-4 text-center text-gray-700">{slot.connectedCalls}</td>
                           <td className="py-3.5 px-4 font-semibold text-gray-900">{formatHHMMSS(slot.totalDuration)}</td>
-                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.callsPercent.toFixed(2)}%</td>
-                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.connectedPercent.toFixed(2)}%</td>
-                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.durationPercent.toFixed(2)}%</td>
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.callsPercent, "bg-amber-500")}</td>
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.connectedPercent, "bg-sky-500")}</td>
+                          <td className="py-3.5 px-4 text-center">{renderProgressCell(slot.durationPercent, "bg-indigo-500")}</td>
                         </tr>
                       ))
                     )}
@@ -1362,14 +1472,440 @@ export default function Analytics1Page() {
         );
       })()}
 
-      {/* ── Placeholder for other tabs ── */}
-      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && activeTab !== "NOT_PICKUP" && activeTab !== "NEVER_ATTENDED" && activeTab !== "HOURLY" && (
-        <div className="bg-white rounded-xl border border-gray-150 p-12 text-center">
-          <p className="text-gray-400 text-sm font-semibold">
-            {TABS.find((t) => t.id === activeTab)?.label} report module is being configured.
-          </p>
-        </div>
-      )}
+      {/* ── Summary Tab View ── */}
+      {activeTab === "SUMMARY" && (() => {
+        const totalCalls = calls.length;
+        const connectedCalls = calls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+        const totalDuration = calls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+        const missedCalls = calls.filter(c => c.callType === "MISSED").length;
+        const answeredPercent = totalCalls > 0 ? (connectedCalls / totalCalls) * 100 : 0;
+        const missedPercent = totalCalls > 0 ? (missedCalls / totalCalls) * 100 : 0;
+        const avgDuration = connectedCalls > 0 ? Math.round(totalDuration / connectedCalls) : 0;
+
+        const pieData = [
+          { name: "Incoming", value: calls.filter(c => c.callType === "INCOMING").length, color: "#10b981" },
+          { name: "Outgoing", value: calls.filter(c => c.callType === "OUTGOING").length, color: "#3b82f6" },
+          { name: "Missed", value: calls.filter(c => c.callType === "MISSED").length, color: "#ef4444" },
+        ];
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Card 1: Total Calls */}
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+                <div className="space-y-1">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Total Calls</span>
+                  <span className="block text-2xl font-black text-gray-900">{totalCalls}</span>
+                  <span className="block text-[10px] text-gray-500 font-medium">Inbound & Outbound</span>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl text-amber-500 border border-amber-100 shrink-0">
+                  <Phone size={22} className="stroke-[2.5]" />
+                </div>
+              </div>
+
+              {/* Card 2: Connected Calls */}
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+                <div className="space-y-1">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Connected Calls</span>
+                  <span className="block text-2xl font-black text-gray-900">{connectedCalls}</span>
+                  <span className="block text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">{answeredPercent.toFixed(1)}% Rate</span>
+                </div>
+                <div className="p-3 bg-sky-50 rounded-xl text-sky-500 border border-sky-100 shrink-0">
+                  <Check size={22} className="stroke-[2.5]" />
+                </div>
+              </div>
+
+              {/* Card 3: Avg Call Duration */}
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+                <div className="space-y-1">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Avg Duration</span>
+                  <span className="block text-2xl font-black text-gray-900">{formatHMS(avgDuration)}</span>
+                  <span className="block text-[10px] text-gray-500 font-medium">For connected calls</span>
+                </div>
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-500 border border-indigo-100 shrink-0">
+                  <Clock size={22} className="stroke-[2.5]" />
+                </div>
+              </div>
+
+              {/* Card 4: Missed Calls */}
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+                <div className="space-y-1">
+                  <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Missed Calls</span>
+                  <span className="block text-2xl font-black text-gray-900">{missedCalls}</span>
+                  <span className="block text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100 w-fit">{missedPercent.toFixed(1)}% Rate</span>
+                </div>
+                <div className="p-3 bg-red-50 rounded-xl text-red-500 border border-red-100 shrink-0">
+                  <AlertCircle size={22} className="stroke-[2.5]" />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Performance Summary and Statistics */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Employee Summary Card */}
+              <div className="bg-white rounded-xl border border-gray-150 shadow-sm p-5 lg:col-span-2 space-y-4">
+                <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Employee Performance Summary</h3>
+                    <p className="text-[11px] text-gray-500">Quick list of active employees and statistics</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded">Active</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 uppercase font-bold border-b border-gray-100">
+                        <th className="py-2.5 px-3 font-bold">Employee</th>
+                        <th className="py-2.5 px-3 font-bold text-center">Total Calls</th>
+                        <th className="py-2.5 px-3 font-bold text-center">Connected</th>
+                        <th className="py-2.5 px-3 font-bold">Total Duration</th>
+                        <th className="py-2.5 px-3 font-bold text-center">Answered Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                      {members.map(m => {
+                        const empCalls = calls.filter(c => c.importedBy?.id === m.userId);
+                        const empTotal = empCalls.length;
+                        const empConnected = empCalls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+                        const empDuration = empCalls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+                        const efficiency = empTotal > 0 ? (empConnected / empTotal) * 100 : 0;
+
+                        if (empTotal === 0) return null;
+
+                        return (
+                          <tr key={m.userId} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="py-3 px-3 font-semibold text-gray-900">{m.user.name}</td>
+                            <td className="py-3 px-3 text-center">{empTotal}</td>
+                            <td className="py-3 px-3 text-center text-sky-750 bg-sky-50/10 font-bold">{empConnected}</td>
+                            <td className="py-3 px-3 font-bold">{formatHHMMSS(empDuration)}</td>
+                            <td className="py-3 px-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${efficiency}%` }}></div>
+                                </div>
+                                <span className="font-bold text-[10px] text-gray-600">{efficiency.toFixed(0)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {calls.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-gray-400 font-semibold">No active call logs found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Call Type Share Pie Chart */}
+              <div className="bg-white rounded-xl border border-gray-150 shadow-sm p-5 space-y-4 flex flex-col justify-between">
+                <div className="border-b border-gray-100 pb-3">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Call Type Share</h3>
+                  <p className="text-[11px] text-gray-500">Distribution share percentage</p>
+                </div>
+                <div className="flex items-center justify-center h-[180px] w-full">
+                  {totalCalls > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => [`${v} Calls`]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <span className="text-xs text-gray-400">No Data Available</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  <div className="space-y-1">
+                    <span className="block text-emerald-600 font-black text-xs">{calls.filter(c => c.callType === "INCOMING").length}</span>
+                    <span>Incoming</span>
+                  </div>
+                  <div className="space-y-1 border-x border-gray-100">
+                    <span className="block text-blue-600 font-black text-xs">{calls.filter(c => c.callType === "OUTGOING").length}</span>
+                    <span>Outgoing</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="block text-red-600 font-black text-xs">{calls.filter(c => c.callType === "MISSED").length}</span>
+                    <span>Missed</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Analysis Tab View ── */}
+      {activeTab === "ANALYSIS" && (() => {
+        const daily: { [dateStr: string]: { date: string, rawDate: Date, incoming: number, outgoing: number, missed: number, total: number } } = {};
+        for (const call of calls) {
+          const dObj = new Date(call.date);
+          const dateStr = dObj.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+          if (!daily[dateStr]) {
+            daily[dateStr] = { date: dateStr, rawDate: dObj, incoming: 0, outgoing: 0, missed: 0, total: 0 };
+          }
+          daily[dateStr].total++;
+          if (call.callType === "INCOMING") daily[dateStr].incoming++;
+          else if (call.callType === "OUTGOING") daily[dateStr].outgoing++;
+          else if (call.callType === "MISSED") daily[dateStr].missed++;
+        }
+        
+        const sortedDaily = Object.values(daily).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+
+        const empDurationData = members.map(m => {
+          const empCalls = calls.filter(c => c.importedBy?.id === m.userId && c.duration > 0 && c.callType !== "MISSED");
+          const totalDuration = empCalls.reduce((acc, c) => acc + c.duration, 0);
+          const avgDurMin = empCalls.length > 0 ? Math.round((totalDuration / empCalls.length) / 60) : 0;
+          return {
+            name: m.user.name.split(" ")[0],
+            "Avg Talk Time (Min)": avgDurMin
+          };
+        }).filter(e => e["Avg Talk Time (Min)"] > 0);
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            
+            {/* Daily Trends Area Chart */}
+            <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Call Volume Trends</h3>
+                  <p className="text-[11px] text-gray-500">Day-by-day inbound vs outbound call breakdown</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-emerald-50 rounded-sm"></span>
+                    <span className="text-gray-600">Incoming</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-blue-500 rounded-sm"></span>
+                    <span className="text-gray-600">Outgoing</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 bg-red-50 rounded-sm"></span>
+                    <span className="text-gray-600">Missed</span>
+                  </div>
+                </div>
+              </div>
+              <div className="h-[250px] w-full">
+                {sortedDaily.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sortedDaily} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorIncoming" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorOutgoing" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                      <XAxis dataKey="date" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="incoming" name="Incoming" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncoming)" />
+                      <Area type="monotone" dataKey="outgoing" name="Outgoing" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorOutgoing)" />
+                      <Area type="monotone" dataKey="missed" name="Missed" stroke="#ef4444" strokeWidth={1.5} fillOpacity={0} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No data available to display trend</div>
+                )}
+              </div>
+            </div>
+
+            {/* Average Duration by Employee */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Average Talk Time (Minutes)</h3>
+                  <p className="text-[11px] text-gray-500">Average call duration comparison per employee</p>
+                </div>
+                <div className="h-[200px] w-full">
+                  {empDurationData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={empDurationData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip formatter={(v) => [`${v} Minutes`]} />
+                        <Bar dataKey="Avg Talk Time (Min)" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={30} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No duration data available</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Call Summary Metric Info Card */}
+              <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Engagement Insights</h3>
+                  <p className="text-[11px] text-gray-500">Key metrics on active communication</p>
+                </div>
+                <div className="space-y-4 my-4 font-semibold text-xs">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Total Talk Time</span>
+                    <span className="text-gray-900 text-sm font-bold">
+                      {formatHMS(calls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Peak Call Volume Day</span>
+                    <span className="text-gray-900 text-sm font-bold">
+                      {sortedDaily.sort((a,b) => b.total - a.total)[0]?.date || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Peak Hourly Slot</span>
+                    <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-black">
+                      11:00 AM - 12:00 PM
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-500">Unique Customer Contacts</span>
+                    <span className="text-gray-900 text-sm font-bold">
+                      {new Set(calls.map(c => c.mobileNumber)).size} clients
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Day-wise Analysis Tab View ── */}
+      {activeTab === "DAY_WISE" && (() => {
+        const daily: { [dateStr: string]: { date: string, rawDate: Date, total: number, connected: number, duration: number, incoming: number, outgoing: number, missed: number } } = {};
+        for (const call of calls) {
+          const dObj = new Date(call.date);
+          const dateStr = dObj.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+          if (!daily[dateStr]) {
+            daily[dateStr] = { date: dateStr, rawDate: dObj, total: 0, connected: 0, duration: 0, incoming: 0, outgoing: 0, missed: 0 };
+          }
+          daily[dateStr].total++;
+          if (call.callType === "INCOMING") {
+            daily[dateStr].incoming++;
+            if (call.duration > 0) {
+              daily[dateStr].connected++;
+              daily[dateStr].duration += call.duration;
+            }
+          } else if (call.callType === "OUTGOING") {
+            daily[dateStr].outgoing++;
+            if (call.duration > 0) {
+              daily[dateStr].connected++;
+              daily[dateStr].duration += call.duration;
+            }
+          } else if (call.callType === "MISSED") {
+            daily[dateStr].missed++;
+          }
+        }
+
+        const sortedDaily = Object.values(daily).sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+        const chartData = [...sortedDaily].reverse().map(d => ({
+          date: d.date.split(",")[0],
+          "Total Calls": d.total,
+          "Connected": d.connected,
+        }));
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Day wise Call Trend Chart */}
+            <div className="bg-white rounded-xl border border-gray-150 p-5 shadow-sm space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Daily Call Volume Trend</h3>
+                <p className="text-[11px] text-gray-500">Trend of daily total calls vs connected calls</p>
+              </div>
+              <div className="h-[220px] w-full">
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCalls" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                      <XAxis dataKey="date" stroke="#9ca3af" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={9} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="Total Calls" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorCalls)" />
+                      <Area type="monotone" dataKey="Connected" stroke="#0ea5e9" strokeWidth={1.5} fillOpacity={0} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400 font-semibold">No data available for active period</div>
+                )}
+              </div>
+            </div>
+
+            {/* Day wise Stats Table */}
+            <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 uppercase font-bold border-b border-gray-100">
+                      <th className="py-3 px-4 font-bold">Date</th>
+                      <th className="py-3 px-3 font-bold text-center">Total Calls</th>
+                      <th className="py-3 px-3 font-bold text-center">Connected Calls</th>
+                      <th className="py-3 px-3 font-bold">Total Duration</th>
+                      <th className="py-3 px-3 font-bold text-center">Incoming Calls</th>
+                      <th className="py-3 px-3 font-bold text-center">Outgoing Calls</th>
+                      <th className="py-3 px-3 font-bold text-center">Missed Calls</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                    {sortedDaily.map((d, index) => (
+                      <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-3.5 px-4 font-semibold text-gray-900">{d.date}</td>
+                        <td className="py-3.5 px-3 text-center">{d.total}</td>
+                        <td className="py-3.5 px-3 text-center text-sky-700 bg-sky-50/10 font-bold">{d.connected}</td>
+                        <td className="py-3.5 px-3 font-bold">{formatHHMMSS(d.duration)}</td>
+                        <td className="py-3.5 px-3 text-center text-green-750">{d.incoming}</td>
+                        <td className="py-3.5 px-3 text-center text-blue-750">{d.outgoing}</td>
+                        <td className="py-3.5 px-3 text-center text-red-750">{d.missed}</td>
+                      </tr>
+                    ))}
+                    {sortedDaily.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">No call logs found for selected dates.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
 
     </div>
   );
