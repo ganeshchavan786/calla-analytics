@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/call-logs", icon: Phone, label: "Call Logs" },
-  { href: "/analytics-1", icon: BarChart2, label: "Analytics-1" },
+  { href: "/analytics", icon: BarChart2, label: "Analytics" },
   { href: "/reports", icon: FileText, label: "Reports" },
   { href: "/tasks", icon: CheckSquare, label: "Follow-up Tasks" },
   { href: "/notifications", icon: Bell, label: "Notifications" },

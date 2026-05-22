@@ -1,5 +1,5 @@
 "use client";
-// src/app/analytics-1/page.tsx — Periodic Reports (Analytics-1)
+// src/app/analytics/page.tsx — Periodic Reports (Analytics)
 
 import { useState, useEffect, useCallback, Fragment } from "react";
 import {
