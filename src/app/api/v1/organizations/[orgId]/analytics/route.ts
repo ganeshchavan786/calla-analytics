@@ -14,7 +14,10 @@ export const GET = withAuth(async (req, ctx) => {
     return apiError("VALIDATION_ERROR", "Invalid query params", 400);
   }
 
-  const { period, dateFrom, dateTo, userId, groupBy } = parsed.data;
+  const { period, dateFrom, dateTo, userId, groupBy: parsedGroupBy } = parsed.data;
+  const groupBy = searchParams.groupBy 
+    ? parsedGroupBy 
+    : (period === "today" || period === "yesterday" ? "hour" : parsedGroupBy);
 
   // Resolve date range
   const now = new Date();

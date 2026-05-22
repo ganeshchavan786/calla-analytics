@@ -14,6 +14,7 @@ const REPORT_TYPES = [
   { value: "TREND", label: "Call Trend Analysis", icon: Activity, desc: "Week-over-week and month-over-month trends" },
   { value: "TEAM", label: "Team Activity Report", icon: Users, desc: "Cross-member call volume comparison" },
   { value: "PEAK_HOUR", label: "Peak Hour Analysis", icon: Clock, desc: "Busiest calling windows by day of week" },
+  { value: "HOURLY_ANALYSIS", label: "Hourly Analysis Report", icon: Clock, desc: "Detailed breakdown of calls and duration by hour" },
 ];
 
 export default function ReportsPage() {

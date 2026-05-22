@@ -178,6 +178,7 @@ export const ReportConfigSchema = z.object({
     "TREND",
     "TEAM",
     "PEAK_HOUR",
+    "HOURLY_ANALYSIS",
   ]),
   dateFrom: z.string(),
   dateTo: z.string(),
@@ -224,7 +225,7 @@ export const AnalyticsQuerySchema = z.object({
     .enum(["today", "yesterday", "7d", "30d", "90d", "custom"])
     .default("7d"),
   userId: z.string().optional(),
-  groupBy: z.enum(["day", "week", "month"]).optional().default("day"),
+  groupBy: z.enum(["hour", "day", "week", "month"]).optional().default("day"),
 });
 
 // =============================================================

@@ -623,9 +623,9 @@ export default function DashboardPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="incoming" stroke="#22c55e" strokeWidth={2} dot={false} name="Incoming" />
-                <Line type="monotone" dataKey="outgoing" stroke="#3b82f6" strokeWidth={2} dot={false} name="Outgoing" />
-                <Line type="monotone" dataKey="missed" stroke="#ef4444" strokeWidth={2} dot={false} name="Missed" />
+                <Line type="monotone" dataKey="incoming" stroke="#22c55e" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 4 }} name="Incoming" />
+                <Line type="monotone" dataKey="outgoing" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 4 }} name="Outgoing" />
+                <Line type="monotone" dataKey="missed" stroke="#ef4444" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 4 }} name="Missed" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -636,27 +636,79 @@ export default function DashboardPage() {
         </div>
 
         {/* Heatmap */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Peak Hours</h2>
-          <div className="grid grid-cols-6 gap-1">
-            {heatmap.map((h) => {
-              const intensity = h.count / maxHeat;
-              return (
-                <div
-                  key={h.hour}
-                  title={`${h.label}: ${h.count} calls`}
-                  className="aspect-square rounded flex items-center justify-center text-xs font-medium cursor-default"
-                  style={{
-                    backgroundColor: `rgba(59, 130, 246, ${Math.max(0.08, intensity)})`,
-                    color: intensity > 0.5 ? "white" : "#374151",
-                  }}
-                >
-                  {h.hour}
+        <div className="bg-white rounded-xl border border-gray-100 p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 mb-4">Peak Hours</h2>
+            {heatmap.length > 0 ? (
+              <div className="space-y-4">
+                {/* AM Row */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AM (00:00 - 11:00)</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-1">
+                    {heatmap.slice(0, 12).map((h) => {
+                      const intensity = h.count / maxHeat;
+                      return (
+                        <div
+                          key={h.hour}
+                          title={`${h.label}: ${h.count} calls`}
+                          className="h-8 rounded flex items-center justify-center text-[10px] sm:text-xs font-semibold cursor-default transition-all hover:scale-105"
+                          style={{
+                            backgroundColor: `rgba(59, 130, 246, ${Math.max(0.08, intensity)})`,
+                            color: intensity > 0.5 ? "white" : "#374151",
+                          }}
+                        >
+                          {h.hour}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+
+                {/* PM Row */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PM (12:00 - 23:00)</span>
+                  </div>
+                  <div className="grid grid-cols-12 gap-1">
+                    {heatmap.slice(12, 24).map((h) => {
+                      const intensity = h.count / maxHeat;
+                      return (
+                        <div
+                          key={h.hour}
+                          title={`${h.label}: ${h.count} calls`}
+                          className="h-8 rounded flex items-center justify-center text-[10px] sm:text-xs font-semibold cursor-default transition-all hover:scale-105"
+                          style={{
+                            backgroundColor: `rgba(59, 130, 246, ${Math.max(0.08, intensity)})`,
+                            color: intensity > 0.5 ? "white" : "#374151",
+                          }}
+                        >
+                          {h.hour}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-32 flex items-center justify-center text-gray-400 text-sm">
+                No data available
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-400 mt-3">Each cell = 1 hour (0–23)</p>
+
+          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-[10px] text-gray-400">
+            <span>Cell value = Hour (0-23)</span>
+            <div className="flex items-center gap-1.5">
+              <span>Less</span>
+              <div className="w-2 h-2 rounded bg-blue-50 border border-gray-100" />
+              <div className="w-2 h-2 rounded bg-blue-200" />
+              <div className="w-2 h-2 rounded bg-blue-400" />
+              <div className="w-2 h-2 rounded bg-blue-600" />
+              <span>More</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

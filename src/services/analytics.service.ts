@@ -54,7 +54,7 @@ export class AnalyticsService {
     organizationId: string,
     dateFrom: Date,
     dateTo: Date,
-    groupBy: "day" | "week" | "month" = "day"
+    groupBy: "hour" | "day" | "week" | "month" = "day"
   ): Promise<CallTrend[]> {
     const calls = await prisma.callLog.findMany({
       where: {
@@ -68,6 +68,14 @@ export class AnalyticsService {
 
     // Group by date
     const grouped: Record<string, { incoming: number; outgoing: number; missed: number }> = {};
+
+    if (groupBy === "hour") {
+      // Pre-populate all 24 hours of the day to make the trend continuous
+      for (let h = 0; h < 24; h++) {
+        const key = `${h.toString().padStart(2, "0")}:00`;
+        grouped[key] = { incoming: 0, outgoing: 0, missed: 0 };
+      }
+    }
 
     for (const call of calls) {
       const key = formatDateKey(call.date, groupBy);
@@ -315,8 +323,11 @@ export class AnalyticsService {
 // HELPERS
 // =============================================================
 
-function formatDateKey(date: Date, groupBy: "day" | "week" | "month"): string {
+function formatDateKey(date: Date, groupBy: "hour" | "day" | "week" | "month"): string {
   const d = new Date(date);
+  if (groupBy === "hour") {
+    return `${String(d.getHours()).padStart(2, "0")}:00`;
+  }
   if (groupBy === "day") {
     return d.toISOString().split("T")[0];
   }

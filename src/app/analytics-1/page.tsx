@@ -1,7 +1,7 @@
 "use client";
 // src/app/analytics-1/page.tsx — Periodic Reports (Analytics-1)
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Calendar, Users, BarChart2, Clock, Activity, FileText, Download,
   Search, ChevronDown, Check, X, Pin, Plus, AlertCircle, ChevronUp, Sliders,
@@ -131,6 +131,13 @@ export default function Analytics1Page() {
 
   const formatHMSOptional = (seconds: number): string => {
     return seconds > 0 ? formatHMS(seconds) : "—";
+  };
+
+  const formatHHMMSS = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, "0");
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
   };
 
   // Aggregation for Unique Clients
@@ -951,8 +958,412 @@ export default function Analytics1Page() {
         );
       })()}
 
+      {/* ── Hourly Analysis Tab View ── */}
+      {activeTab === "HOURLY" && (() => {
+        // 1. Calculate overall totals across all filtered calls
+        const grandTotalCalls = calls.length;
+        const grandTotalConnected = calls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+        const grandTotalDuration = calls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+        // 2. Generate 24 Hourly slots starting from 12:00 AM
+        const hourlySlots = Array.from({ length: 24 }, (_, i) => {
+          const hour24 = i;
+          let label = "";
+          if (hour24 === 0) label = "12:00 AM - 12:59 AM";
+          else if (hour24 < 12) label = `${String(hour24).padStart(2, "0")}:00 AM - ${String(hour24).padStart(2, "0")}:59 AM`;
+          else if (hour24 === 12) label = "12:00 PM - 12:59 PM";
+          else {
+            const h12 = hour24 - 12;
+            label = `${String(h12).padStart(2, "0")}:00 PM - ${String(h12).padStart(2, "0")}:59 PM`;
+          }
+
+          const slotCalls = calls.filter(c => new Date(c.date).getHours() === hour24);
+          const totalCalls = slotCalls.length;
+          const connectedCalls = slotCalls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+          const totalDuration = slotCalls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+          const callsPercent = grandTotalCalls > 0 ? (totalCalls / grandTotalCalls) * 100 : 0;
+          const connectedPercent = grandTotalConnected > 0 ? (connectedCalls / grandTotalConnected) * 100 : 0;
+          const durationPercent = grandTotalDuration > 0 ? (totalDuration / grandTotalDuration) * 100 : 0;
+
+          return {
+            hour24,
+            label,
+            totalCalls,
+            connectedCalls,
+            totalDuration,
+            callsPercent,
+            connectedPercent,
+            durationPercent,
+          };
+        });
+
+        // 3. Define time slots for the Employee Summary nested table
+        const summarySlots = [
+          {
+            id: "before_10",
+            label: "Before 10:00 AM",
+            filter: (c: CallLog) => new Date(c.date).getHours() < 10
+          },
+          ...Array.from({ length: 14 }, (_, idx) => {
+            const hour24 = idx + 10; // 10 to 23
+            const hour12 = hour24 > 12 ? hour24 - 12 : hour24;
+            const ampm = hour24 >= 12 ? "PM" : "AM";
+            const label = `${String(hour12).padStart(2, "0")}:00 ${ampm} - ${String(hour12).padStart(2, "0")}:59 ${ampm}`;
+            return {
+              id: `hour_${hour24}`,
+              label,
+              filter: (c: CallLog) => new Date(c.date).getHours() === hour24
+            };
+          })
+        ];
+
+        // 4. Group data by employee (members)
+        const filteredMembers = selectedEmployee === "ALL"
+          ? members
+          : members.filter(m => m.userId === selectedEmployee);
+
+        const employeeRows = filteredMembers.map(m => {
+          const empCalls = calls.filter(c => c.importedBy?.id === m.userId);
+
+          const totalCalls = empCalls.length;
+          const connectedCalls = empCalls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+          const totalDuration = empCalls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+          const slotsData = summarySlots.map(slot => {
+            const slotCalls = empCalls.filter(slot.filter);
+            const total = slotCalls.length;
+            const connected = slotCalls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+            const duration = slotCalls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+            return {
+              total,
+              connected,
+              duration
+            };
+          });
+
+          return {
+            name: m.user.name,
+            totalCalls,
+            connectedCalls,
+            totalDuration,
+            slotsData
+          };
+        });
+
+        return (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Hourly Time Slot Details Table */}
+            <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-100">
+                      <th className="py-4 px-4 font-bold min-w-[200px]">Hourly Time Slot</th>
+                      <th className="py-4 px-4 font-bold text-center">Total Calls</th>
+                      <th className="py-4 px-4 font-bold text-center">Total Connected Calls</th>
+                      <th className="py-4 px-4 font-bold">Total Duration</th>
+                      <th className="py-4 px-4 font-bold text-center">Total Calls (%)</th>
+                      <th className="py-4 px-4 font-bold text-center">Total Connected Calls (%)</th>
+                      <th className="py-4 px-4 font-bold text-center">Total Duration (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">
+                          Loading Hourly Analysis...
+                        </td>
+                      </tr>
+                    ) : grandTotalCalls === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-400 font-semibold">
+                          No call data found for this period.
+                        </td>
+                      </tr>
+                    ) : (
+                      hourlySlots.map((slot) => (
+                        <tr key={slot.hour24} className="hover:bg-gray-50/50 transition-colors font-medium">
+                          <td className="py-3.5 px-4 font-semibold text-gray-900">{slot.label}</td>
+                          <td className="py-3.5 px-4 text-center text-gray-700">{slot.totalCalls}</td>
+                          <td className="py-3.5 px-4 text-center text-gray-700">{slot.connectedCalls}</td>
+                          <td className="py-3.5 px-4 font-semibold text-gray-900">{formatHHMMSS(slot.totalDuration)}</td>
+                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.callsPercent.toFixed(2)}%</td>
+                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.connectedPercent.toFixed(2)}%</td>
+                          <td className="py-3.5 px-4 text-center text-amber-700 bg-amber-50/20">{slot.durationPercent.toFixed(2)}%</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Employee Summary Table */}
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-gray-800 px-1">Employee Summary</h2>
+              <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      {/* Top Header Row with Grouped/ColSpanned Columns */}
+                      <tr className="bg-gray-100 text-gray-700 uppercase font-bold border-b border-gray-200">
+                        <th rowSpan={2} className="py-3 px-4 font-bold border-r border-gray-200 min-w-[150px] align-middle">Employee</th>
+                        <th colSpan={3} className="py-2 px-3 font-bold border-r border-gray-200 text-center">Total</th>
+                        {summarySlots.map((slot) => (
+                          <th key={slot.id} colSpan={3} className="py-2 px-3 font-bold border-r border-gray-200 text-center min-w-[240px]">
+                            {slot.label}
+                          </th>
+                        ))}
+                      </tr>
+                      {/* Sub-Header Row */}
+                      <tr className="bg-gray-50 text-gray-500 uppercase font-bold border-b border-gray-200">
+                        <th className="py-2 px-2 font-bold text-center">Total Calls</th>
+                        <th className="py-2 px-2 font-bold text-center">Total Connected</th>
+                        <th className="py-2 px-2 font-bold border-r border-gray-200">Total Duration</th>
+                        {summarySlots.map((slot) => (
+                          <Fragment key={slot.id}>
+                            <th className="py-2 px-2 font-bold text-center">Total Calls</th>
+                            <th className="py-2 px-2 font-bold text-center">Total Connected</th>
+                            <th className="py-2 px-2 font-bold border-r border-gray-200">Total Duration</th>
+                          </Fragment>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={4 + summarySlots.length * 3} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                            Loading Employee Summary...
+                          </td>
+                        </tr>
+                      ) : employeeRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={4 + summarySlots.length * 3} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                            No employee data found.
+                          </td>
+                        </tr>
+                      ) : (
+                        employeeRows.map((row) => (
+                          <tr key={row.name} className="hover:bg-gray-50/50 transition-colors font-medium">
+                            {/* Employee Name */}
+                            <td className="py-3 px-4 font-semibold text-gray-900 border-r border-gray-150 align-middle">
+                              {row.name}
+                            </td>
+                            {/* Total Columns */}
+                            <td className="py-3 px-2 text-center">{row.totalCalls}</td>
+                            <td className="py-3 px-2 text-center font-semibold text-amber-700 bg-amber-50/10">{row.connectedCalls}</td>
+                            <td className="py-3 px-2 border-r border-gray-150 font-semibold">{formatHHMMSS(row.totalDuration)}</td>
+                            {/* Time Slots Columns */}
+                            {row.slotsData.map((s, idx) => (
+                              <Fragment key={idx}>
+                                <td className="py-3 px-2 text-center">{s.total}</td>
+                                <td className="py-3 px-2 text-center font-semibold text-amber-700 bg-amber-50/10">{s.connected}</td>
+                                <td className="py-3 px-2 border-r border-gray-150 font-semibold">{formatHHMMSS(s.duration)}</td>
+                              </Fragment>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Call History Table */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-base font-bold text-gray-800">Call History</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Show</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => setLimit(parseInt(e.target.value))}
+                    className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold focus:ring-amber-500 bg-white cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-150 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-100">
+                        <th className="py-4 px-4 font-bold min-w-[60px]">Sr. No.</th>
+                        
+                        {/* Employee with Search Box */}
+                        <th className="py-4 px-4 font-bold min-w-[200px]">
+                          <span className="block mb-2">Employee</span>
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search"
+                              value={searchEmployee}
+                              onChange={(e) => setSearchEmployee(e.target.value)}
+                              className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                            />
+                          </div>
+                        </th>
+
+                        {/* To Number with Search Box */}
+                        <th className="py-4 px-4 font-bold min-w-[220px]">
+                          <span className="block mb-2">To Number</span>
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search"
+                              value={searchToNumber}
+                              onChange={(e) => setSearchToNumber(e.target.value)}
+                              className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                            />
+                          </div>
+                        </th>
+
+                        {/* Date with Filter */}
+                        <th className="py-4 px-4 font-bold min-w-[150px]">
+                          <span className="block mb-2">Date</span>
+                          <input
+                            type="text"
+                            placeholder="Select Date"
+                            value={searchDate}
+                            onChange={(e) => setSearchDate(e.target.value)}
+                            className="w-full px-2.5 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                          />
+                        </th>
+
+                        <th className="py-4 px-4 font-bold min-w-[100px]">Time</th>
+                        <th className="py-4 px-4 font-bold min-w-[120px]">Duration</th>
+
+                        {/* Call Type Dropdown */}
+                        <th className="py-4 px-4 font-bold min-w-[150px]">
+                          <span className="block mb-2">Call Type</span>
+                          <select
+                            value={searchCallType}
+                            onChange={(e) => setSearchCallType(e.target.value)}
+                            className="w-full px-2.5 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white cursor-pointer"
+                          >
+                            <option value="ALL">Select</option>
+                            <option value="INCOMING">Incoming</option>
+                            <option value="OUTGOING">Outgoing</option>
+                            <option value="MISSED">Missed</option>
+                          </select>
+                        </th>
+
+                        {/* Notes with Search */}
+                        <th className="py-4 px-4 font-bold min-w-[180px]">
+                          <span className="block mb-2">Notes</span>
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search"
+                              value={searchNotes}
+                              onChange={(e) => setSearchNotes(e.target.value)}
+                              className="w-full pl-7 pr-3 py-1 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                            />
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                            Loading call logs...
+                          </td>
+                        </tr>
+                      ) : calls.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-gray-400 text-sm font-semibold">
+                            No call records found under active filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        calls.map((call, index) => {
+                          const isIncoming = call.callType === "INCOMING";
+                          const isOutgoing = call.callType === "OUTGOING";
+                          return (
+                            <tr key={call.id} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="py-4 px-4 font-bold text-gray-600 text-center">{index + 1}</td>
+                              <td className="py-4 px-4 font-medium">
+                                <p className="text-gray-900 font-semibold">{call.importedBy?.name || "System"}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">({call.importedBy?.email.split("@")[0] || "9921640630"})</p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <p className="font-semibold text-amber-700 hover:underline cursor-pointer">
+                                      {call.contactName || "Unknown"}
+                                    </p>
+                                    <p className="text-xs text-gray-500 font-medium mt-0.5">{call.mobileNumber}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => togglePin(call.id)}
+                                    className={`p-1 rounded-md hover:bg-gray-100 transition-colors shrink-0 ${
+                                      call.isImportant ? "text-amber-500" : "text-gray-300"
+                                    }`}
+                                    title={call.isImportant ? "Unpin" : "Pin Call"}
+                                  >
+                                    <Pin size={13} className={call.isImportant ? "fill-amber-500" : ""} />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4 font-medium">
+                                {new Date(call.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                              </td>
+                              <td className="py-4 px-4 text-gray-600 font-semibold">
+                                {new Date(call.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              </td>
+                              <td className="py-4 px-4 font-semibold text-gray-900">
+                                {call.callType === "MISSED" ? "—" : formatHMS(call.duration)}
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg w-fit text-xs font-bold ${
+                                  isIncoming
+                                    ? "bg-green-50 text-green-700 border border-green-100"
+                                    : isOutgoing
+                                    ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                    : "bg-red-50 text-red-700 border border-red-100"
+                                }`}>
+                                  {isIncoming && <PhoneIncoming size={12} />}
+                                  {isOutgoing && <PhoneOutgoing size={12} />}
+                                  {call.callType === "MISSED" && <PhoneMissed size={12} />}
+                                  <span className="capitalize">{call.callType.toLowerCase()}</span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                {call.notes && call.notes.length > 0 ? (
+                                  <p className="text-xs text-gray-600 font-medium">{call.notes[0].content}</p>
+                                ) : (
+                                  <button className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors">
+                                    <Plus size={11} />
+                                    <span>Add Note</span>
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Placeholder for other tabs ── */}
-      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && activeTab !== "NOT_PICKUP" && activeTab !== "NEVER_ATTENDED" && (
+      {activeTab !== "CALL_HISTORY" && activeTab !== "UNIQUE_CLIENTS" && activeTab !== "NOT_PICKUP" && activeTab !== "NEVER_ATTENDED" && activeTab !== "HOURLY" && (
         <div className="bg-white rounded-xl border border-gray-150 p-12 text-center">
           <p className="text-gray-400 text-sm font-semibold">
             {TABS.find((t) => t.id === activeTab)?.label} report module is being configured.

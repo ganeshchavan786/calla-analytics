@@ -959,7 +959,7 @@ Separate endpoints are available for the Mobile App:
                 name: "type", in: "query", required: true,
                 schema: {
                   type: "string",
-                  enum: ["DAILY", "EMPLOYEE", "MISSED", "NUMBER_WISE", "DURATION", "PRODUCTIVITY", "TREND", "TEAM", "PEAK_HOUR"],
+                  enum: ["DAILY", "EMPLOYEE", "MISSED", "NUMBER_WISE", "DURATION", "PRODUCTIVITY", "TREND", "TEAM", "PEAK_HOUR", "HOURLY_ANALYSIS"],
                 },
               },
               { name: "dateFrom", in: "query", required: true, schema: { type: "string", format: "date" } },

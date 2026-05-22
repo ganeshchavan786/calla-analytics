@@ -182,6 +182,55 @@ export const GET = withAuth(async (req, ctx) => {
         break;
       }
 
+      case "HOURLY_ANALYSIS": {
+        const calls = await prisma.callLog.findMany({
+          where: baseWhere,
+          select: {
+            date: true,
+            duration: true,
+            callType: true,
+          },
+        });
+
+        const grandTotalCalls = calls.length;
+        const grandTotalConnected = calls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+        const grandTotalDuration = calls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+        const hourlySlots = Array.from({ length: 24 }, (_, i) => {
+          const hour24 = i;
+          let label = "";
+          if (hour24 === 0) label = "12:00 AM - 12:59 AM";
+          else if (hour24 < 12) label = `${String(hour24).padStart(2, "0")}:00 AM - ${String(hour24).padStart(2, "0")}:59 AM`;
+          else if (hour24 === 12) label = "12:00 PM - 12:59 PM";
+          else {
+            const h12 = hour24 - 12;
+            label = `${String(h12).padStart(2, "0")}:00 PM - ${String(h12).padStart(2, "0")}:59 PM`;
+          }
+
+          const slotCalls = calls.filter(c => c.date.getHours() === hour24);
+          const totalCalls = slotCalls.length;
+          const connectedCalls = slotCalls.filter(c => c.duration > 0 && c.callType !== "MISSED").length;
+          const totalDuration = slotCalls.reduce((acc, c) => acc + (c.callType === "MISSED" ? 0 : c.duration), 0);
+
+          const callsPercent = grandTotalCalls > 0 ? (totalCalls / grandTotalCalls) * 100 : 0;
+          const connectedPercent = grandTotalConnected > 0 ? (connectedCalls / grandTotalConnected) * 100 : 0;
+          const durationPercent = grandTotalDuration > 0 ? (totalDuration / grandTotalDuration) * 100 : 0;
+
+          return {
+            "Hourly Time Slot": label,
+            "Total Calls": totalCalls,
+            "Total Connected Calls": connectedCalls,
+            "Total Duration": formatDuration(totalDuration),
+            "Total Calls (%)": `${callsPercent.toFixed(2)}%`,
+            "Total Connected Calls (%)": `${connectedPercent.toFixed(2)}%`,
+            "Total Duration (%)": `${durationPercent.toFixed(2)}%`,
+          };
+        });
+
+        reportData = hourlySlots;
+        break;
+      }
+
       default:
         return apiError("BAD_REQUEST", `Report type ${type} not implemented`, 400);
     }

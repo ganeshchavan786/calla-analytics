@@ -364,7 +364,8 @@ export type ReportType =
   | "PRODUCTIVITY"
   | "TREND"
   | "TEAM"
-  | "PEAK_HOUR";
+  | "PEAK_HOUR"
+  | "HOURLY_ANALYSIS";
 
 export type ExportFormat = "PDF" | "EXCEL" | "CSV";
 
