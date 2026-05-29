@@ -960,9 +960,18 @@ export default function LicenseDashboard() {
                               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-purple-500/5 dark:from-indigo-500/20 dark:to-purple-500/10 border border-indigo-100 dark:border-indigo-500/25 flex items-center justify-center text-sm font-bold text-indigo-655 dark:text-indigo-305 shadow-sm">
                                 {user.name[0].toUpperCase()}
                               </div>
-                              <div>
+                              <div className="flex flex-col gap-0.5">
                                 <span className="text-slate-900 dark:text-white font-semibold block text-sm">{user.name}</span>
                                 <span className="text-slate-555 dark:text-zinc-555 text-xs">{user.email}</span>
+                                {user.uniqueCode && (
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md mt-0.5 w-fit ${
+                                    user.codeType === "OWNER" 
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30" 
+                                      : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700"
+                                  }`}>
+                                    {user.uniqueCode}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
