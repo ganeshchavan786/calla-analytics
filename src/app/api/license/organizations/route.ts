@@ -18,14 +18,7 @@ export const GET = withLicenseAuth(async (req) => {
       });
     }
 
-    // Auto-block: If subscriptionEndDate has passed and org is still ACTIVE
-    await prisma.organization.updateMany({
-      where: {
-        subscriptionEndDate: { lt: new Date() },
-        status: "ACTIVE",
-      },
-      data: { status: "BLOCKED" },
-    });
+
 
     const sp = req.nextUrl.searchParams;
     const search = sp.get("search") || "";
