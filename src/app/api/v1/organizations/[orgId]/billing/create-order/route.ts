@@ -71,4 +71,4 @@ export const POST = withAuth(async (req, ctx) => {
     const errorDetails = error.description || error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
     return apiError("ORDER_CREATE_FAILED", `Failed to create payment order: ${errorDetails}`, 500);
   }
-}, "OWNER");
+}, "OWNER", { allowExpired: true });

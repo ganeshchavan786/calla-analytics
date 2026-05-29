@@ -8,7 +8,7 @@ import { InviteMemberSchema } from "@/lib/validation";
 export const GET = withAuth(async (_req, ctx) => {
   const members = await OrganizationService.getMembers(ctx.organizationId);
   return apiSuccess(members);
-});
+}, undefined, { allowExpired: true });
 
 // POST /api/v1/organizations/:orgId/members — invite member
 export const POST = withAuth(async (req, ctx) => {

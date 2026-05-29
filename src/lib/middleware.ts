@@ -31,7 +31,11 @@ export function canManageSettings(role: MemberRole): boolean { return hasPermiss
 export function canImportCallLogs(role: MemberRole): boolean { return hasPermission(role, "MEMBER"); }
 export function canExportReports(role: MemberRole): boolean { return hasPermission(role, "ADMIN"); }
 
-export function withAuth(handler: ApiHandler, requiredRole?: MemberRole) {
+export function withAuth(
+  handler: ApiHandler, 
+  requiredRole?: MemberRole,
+  options?: { allowExpired?: boolean }
+) {
   return async (
     req: NextRequest,
     { params }: { params?: Record<string, string> } = {}
@@ -75,7 +79,7 @@ export function withAuth(handler: ApiHandler, requiredRole?: MemberRole) {
         return apiError("ORGANIZATION_BLOCKED", "Your organization has been suspended. Please contact support.", 403);
       }
 
-      if (organization.subscriptionEndDate && organization.subscriptionEndDate < new Date()) {
+      if (!options?.allowExpired && organization.subscriptionEndDate && organization.subscriptionEndDate < new Date()) {
         const message = organization.planType === "FREE_TRIAL"
           ? "Your 7-day free trial has expired. Please buy the Enterprise Plan to continue."
           : "Your subscription has expired. Please renew the Enterprise Plan to continue.";

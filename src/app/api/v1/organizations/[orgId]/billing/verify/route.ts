@@ -81,4 +81,4 @@ export const POST = withAuth(async (req, ctx) => {
     console.error("Razorpay Verify Error:", error);
     return apiError("VERIFY_FAILED", error.message || "Failed to verify payment", 500);
   }
-}, "OWNER");
+}, "OWNER", { allowExpired: true });
